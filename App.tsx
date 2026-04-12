@@ -1,34 +1,43 @@
-
-import React from 'react';
-import GroupDashboard from './screens/GroupDashboard';
-
-export default function App() {
-  return <GroupDashboard />;
-}
-
 // App.tsx
 import React from 'react';
 import { TouchableOpacity, Text } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import LoginScreen from './screens/LoginScreen';
-
-// Placeholder ekrany zakładek
-const HomeScreen = () => <Text style={{ color: '#fff', marginTop: 100, textAlign: 'center' }}>Home</Text>;
-const SearchScreen = () => <Text style={{ color: '#fff', marginTop: 100, textAlign: 'center' }}>Search</Text>;
-const ProfileScreen = () => <Text style={{ color: '#fff', marginTop: 100, textAlign: 'center' }}>Profile</Text>;
+import RegisterScreen from './screens/RegisterScreen';
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
+import HomeScreen from './screens/HomeScreen';
+import SearchScreen from './screens/SearchScreen';
+import ProfileScreen from './screens/ProfileScreen';
+import GroupDashboardScreen from './screens/GroupDashboardScreen';
 
 export type RootStackParamList = {
     MainTabs: undefined;
     Login: undefined;
+    Register: undefined;
+    ForgotPassword: undefined;
 };
 
 export type BottomTabParamList = {
-    Home: undefined;
+    'Strona główna': undefined;
+    GroupDashboard: undefined;
     Search: undefined;
     Profile: undefined;
+};
+
+const DarkTheme = {
+    ...DefaultTheme,
+    colors: {
+        ...DefaultTheme.colors,
+        background: '#0f0f0f',
+        card: '#0f0f0f',
+        text: '#ffffff',
+        border: '#2e2e2e',
+        primary: '#6C63FF',
+        notification: '#6C63FF',
+    },
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -37,37 +46,35 @@ const Tab = createBottomTabNavigator<BottomTabParamList>();
 const MainTabs = () => {
     return (
         <Tab.Navigator
-            screenOptions={({ navigation }) => ({
+            screenOptions={{
                 tabBarStyle: { backgroundColor: '#1a1a1a', borderTopColor: '#2e2e2e' },
                 tabBarActiveTintColor: '#6C63FF',
                 tabBarInactiveTintColor: '#888',
-                // 👇 Przycisk "Zaloguj się" w prawym górnym rogu KAŻDEJ zakładki
                 headerStyle: { backgroundColor: '#0f0f0f' },
                 headerTintColor: '#fff',
-                headerRight: () => (
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('Login')}
-                        style={{ marginRight: 16 }}
-                    >
-                        <Text style={{ color: '#6C63FF', fontWeight: '600', fontSize: 15 }}>
-                            Zaloguj się
-                        </Text>
-                    </TouchableOpacity>
-                ),
-            })}
+            }}
         >
             <Tab.Screen
-                name="Home"
+                name="Strona główna"
                 component={HomeScreen}
                 options={{
-                    title: 'Strona główna',
+                    headerShown: false,
                     tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🏠</Text>,
+                }}
+            />
+            <Tab.Screen
+                name="GroupDashboard"
+                component={GroupDashboardScreen}
+                options={{
+                    title: 'Grupy',
+                    tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>👥</Text>,
                 }}
             />
             <Tab.Screen
                 name="Search"
                 component={SearchScreen}
                 options={{
+                    headerShown: false,
                     title: 'Szukaj',
                     tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🔍</Text>,
                 }}
@@ -76,6 +83,7 @@ const MainTabs = () => {
                 name="Profile"
                 component={ProfileScreen}
                 options={{
+                    headerShown: false,
                     title: 'Profil',
                     tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>👤</Text>,
                 }}
@@ -86,10 +94,17 @@ const MainTabs = () => {
 
 export default function App() {
     return (
-        <NavigationContainer>
-            {/* 👇 App startuje od MainTabs, nie od Login */}
-            <Stack.Navigator initialRouteName="MainTabs" screenOptions={{ headerShown: false }}>
+        <NavigationContainer theme={DarkTheme}>
+            <Stack.Navigator
+                initialRouteName="MainTabs"
+                screenOptions={{
+                    headerShown: false,
+                    animation: 'fade',
+                    animationDuration: 220,
+                }}
+            >
                 <Stack.Screen name="MainTabs" component={MainTabs} />
+
                 <Stack.Screen
                     name="Login"
                     component={LoginScreen}
@@ -98,11 +113,37 @@ export default function App() {
                         headerTitle: 'Logowanie',
                         headerStyle: { backgroundColor: '#0f0f0f' },
                         headerTintColor: '#fff',
-                        presentation: 'modal', // ← ładny efekt "wysuwania" ekranu od dołu
+                        presentation: 'modal',
+                        animation: 'slide_from_bottom',
+                        animationDuration: 350,
+                    }}
+                />
+                <Stack.Screen
+                    name="Register"
+                    component={RegisterScreen}
+                    options={{
+                        headerShown: true,
+                        headerTitle: 'Rejestracja',
+                        headerStyle: { backgroundColor: '#0f0f0f' },
+                        headerTintColor: '#fff',
+                        animation: 'slide_from_right',
+                        animationDuration: 300,
+                    }}
+                />
+                <Stack.Screen
+                    name="ForgotPassword"
+                    component={ForgotPasswordScreen}
+                    options={{
+                        headerShown: true,
+                        headerTitle: 'Resetuj hasło',
+                        headerStyle: { backgroundColor: '#0f0f0f' },
+                        headerTintColor: '#fff',
+                        presentation: 'modal',
+                        animation: 'slide_from_bottom',
+                        animationDuration: 350,
                     }}
                 />
             </Stack.Navigator>
         </NavigationContainer>
     );
 }
-
