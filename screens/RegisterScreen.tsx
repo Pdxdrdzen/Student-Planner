@@ -1,0 +1,360 @@
+// src/screens/RegisterScreen.tsx
+import React, { useState } from 'react';
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    StyleSheet,
+    KeyboardAvoidingView,
+    Platform,
+    Alert,
+    StatusBar,
+    ScrollView,
+} from 'react-native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type Props = {
+    navigation: NativeStackNavigationProp<any>;
+};
+
+const RegisterScreen = ({ navigation }: Props) => {
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [focused, setFocused] = useState<string | null>(null);
+
+    const getPasswordStrength = (): { label: string; color: string; width: string } => {
+        if (password.length === 0) return { label: '', color: 'transparent', width: '0%' };
+        if (password.length < 6) return { label: 'Słabe', color: '#FF4C4C', width: '33%' };
+        if (password.length < 10) return { label: 'Średnie', color: '#FFB347', width: '66%' };
+        return { label: 'Silne', color: '#4CAF50', width: '100%' };
+    };
+
+    const strength = getPasswordStrength();
+
+    const handleRegister = () => {
+        if (!name || !email || !password || !confirmPassword) {
+            Alert.alert('Błąd', 'Wypełnij wszystkie pola');
+            return;
+        }
+        if (password !== confirmPassword) {
+            Alert.alert('Błąd', 'Hasła nie są identyczne');
+            return;
+        }
+        if (password.length < 6) {
+            Alert.alert('Błąd', 'Hasło musi mieć co najmniej 6 znaków');
+            return;
+        }
+        // --registration logic here
+        Alert.alert('Sukces', 'Konto zostało utworzone!', [
+            { text: 'OK', onPress: () => navigation.replace('MainTabs') },
+        ]);
+    };
+
+    return (
+        <>
+            <StatusBar barStyle="light-content" backgroundColor="#0f0f0f" />
+            <KeyboardAvoidingView
+                style={styles.container}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* Logo */}
+                    <View style={styles.logoContainer}>
+                        <View style={styles.logoCircle}>
+                            <Text style={styles.logoIcon}>✦</Text>
+                        </View>
+                    </View>
+
+                    <Text style={styles.title}>Utwórz konto</Text>
+                    <Text style={styles.subtitle}>Dołącz i zacznij działać</Text>
+
+                    {/* Imię / Nazwa */}
+                    <View style={styles.inputWrapper}>
+                        <Text style={styles.label}>Imię lub pseudonim</Text>
+                        <TextInput
+                            style={[styles.input, focused === 'name' && styles.inputFocused]}
+                            placeholder="Jan Kowalski"
+                            placeholderTextColor="#555"
+                            autoCapitalize="words"
+                            autoComplete="name"
+                            value={name}
+                            onChangeText={setName}
+                            onFocus={() => setFocused('name')}
+                            onBlur={() => setFocused(null)}
+                        />
+                    </View>
+
+                    {/* Email */}
+                    <View style={styles.inputWrapper}>
+                        <Text style={styles.label}>Adres e-mail</Text>
+                        <TextInput
+                            style={[styles.input, focused === 'email' && styles.inputFocused]}
+                            placeholder="ty@przykład.com"
+                            placeholderTextColor="#555"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoComplete="email"
+                            value={email}
+                            onChangeText={setEmail}
+                            onFocus={() => setFocused('email')}
+                            onBlur={() => setFocused(null)}
+                        />
+                    </View>
+
+                    {/* Hasło */}
+                    <View style={styles.inputWrapper}>
+                        <Text style={styles.label}>Hasło</Text>
+                        <View style={styles.passwordContainer}>
+                            <TextInput
+                                style={[
+                                    styles.input,
+                                    styles.passwordInput,
+                                    focused === 'password' && styles.inputFocused,
+                                ]}
+                                placeholder="Minimum 6 znaków"
+                                placeholderTextColor="#555"
+                                secureTextEntry={!showPassword}
+                                autoComplete="new-password"
+                                value={password}
+                                onChangeText={setPassword}
+                                onFocus={() => setFocused('password')}
+                                onBlur={() => setFocused(null)}
+                            />
+                            <TouchableOpacity
+                                style={styles.eyeButton}
+                                onPress={() => setShowPassword(!showPassword)}
+                            >
+                                <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                        {/* Password strength bar */}
+                        {password.length > 0 && (
+                            <View style={styles.strengthRow}>
+                                <View style={styles.strengthTrack}>
+                                    <View
+                                        style={[
+                                            styles.strengthFill,
+                                            {
+                                                width: strength.width as any,
+                                                backgroundColor: strength.color,
+                                            },
+                                        ]}
+                                    />
+                                </View>
+                                <Text style={[styles.strengthLabel, { color: strength.color }]}>
+                                    {strength.label}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Potwierdź hasło */}
+                    <View style={styles.inputWrapper}>
+                        <Text style={styles.label}>Potwierdź hasło</Text>
+                        <TextInput
+                            style={[
+                                styles.input,
+                                focused === 'confirm' && styles.inputFocused,
+                                confirmPassword.length > 0 &&
+                                password !== confirmPassword &&
+                                styles.inputError,
+                            ]}
+                            placeholder="Powtórz hasło"
+                            placeholderTextColor="#555"
+                            secureTextEntry={!showPassword}
+                            autoComplete="new-password"
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            onFocus={() => setFocused('confirm')}
+                            onBlur={() => setFocused(null)}
+                        />
+                        {confirmPassword.length > 0 && password !== confirmPassword && (
+                            <Text style={styles.errorText}>Hasła nie są identyczne</Text>
+                        )}
+                    </View>
+
+                    {/* Przycisk rejestracji */}
+                    <TouchableOpacity
+                        style={styles.button}
+                        onPress={handleRegister}
+                        activeOpacity={0.85}
+                    >
+                        <Text style={styles.buttonText}>Zarejestruj się</Text>
+                    </TouchableOpacity>
+
+                    {/* Link do logowania */}
+                    <TouchableOpacity
+                        style={styles.loginLink}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Text style={styles.loginLinkText}>
+                            Masz już konto?{' '}
+                            <Text style={styles.loginLinkAccent}>Zaloguj się</Text>
+                        </Text>
+                    </TouchableOpacity>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#0f0f0f',
+    },
+    scrollContent: {
+        flexGrow: 1,
+        justifyContent: 'center',
+        paddingHorizontal: 24,
+        paddingVertical: 48,
+    },
+    logoContainer: {
+        alignItems: 'center',
+        marginBottom: 28,
+    },
+    logoCircle: {
+        width: 72,
+        height: 72,
+        borderRadius: 22,
+        backgroundColor: '#1a1a2e',
+        borderWidth: 1,
+        borderColor: '#6C63FF33',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#6C63FF',
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 8,
+    },
+    logoIcon: {
+        fontSize: 30,
+        color: '#6C63FF',
+    },
+    title: {
+        fontSize: 28,
+        fontWeight: '700',
+        color: '#ffffff',
+        marginBottom: 6,
+        letterSpacing: -0.5,
+    },
+    subtitle: {
+        fontSize: 15,
+        color: '#888',
+        marginBottom: 32,
+    },
+    inputWrapper: {
+        marginBottom: 18,
+    },
+    label: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: '#aaa',
+        marginBottom: 8,
+        letterSpacing: 0.2,
+    },
+    input: {
+        backgroundColor: '#161616',
+        borderRadius: 14,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        color: '#fff',
+        fontSize: 15,
+        borderWidth: 1,
+        borderColor: '#2a2a2a',
+    },
+    inputFocused: {
+        borderColor: '#6C63FF',
+        backgroundColor: '#1a1a2e',
+    },
+    inputError: {
+        borderColor: '#FF4C4C55',
+    },
+    passwordContainer: {
+        position: 'relative',
+    },
+    passwordInput: {
+        paddingRight: 52,
+    },
+    eyeButton: {
+        position: 'absolute',
+        right: 14,
+        top: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        paddingHorizontal: 4,
+    },
+    eyeIcon: {
+        fontSize: 18,
+    },
+    strengthRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+        gap: 10,
+    },
+    strengthTrack: {
+        flex: 1,
+        height: 4,
+        backgroundColor: '#2a2a2a',
+        borderRadius: 99,
+        overflow: 'hidden',
+    },
+    strengthFill: {
+        height: '100%',
+        borderRadius: 99,
+    },
+    strengthLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        minWidth: 44,
+        textAlign: 'right',
+    },
+    errorText: {
+        color: '#FF4C4C',
+        fontSize: 12,
+        marginTop: 6,
+        marginLeft: 4,
+    },
+    button: {
+        backgroundColor: '#6C63FF',
+        borderRadius: 14,
+        paddingVertical: 15,
+        alignItems: 'center',
+        marginTop: 8,
+        shadowColor: '#6C63FF',
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 6,
+    },
+    buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+        letterSpacing: 0.3,
+    },
+    loginLink: {
+        marginTop: 24,
+        alignItems: 'center',
+    },
+    loginLinkText: {
+        color: '#666',
+        fontSize: 14,
+    },
+    loginLinkAccent: {
+        color: '#6C63FF',
+        fontWeight: '600',
+    },
+});
+
+export default RegisterScreen;
