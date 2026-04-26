@@ -11,8 +11,11 @@ import {
     Alert,
     StatusBar,
     ScrollView,
+    ActivityIndicator
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Animated, {useSharedValue,useAnimatedStyle, withDelay, withSpring} from "react-native-reanimated";
+import {useAuth} from '../contexts/AuthContext';
 
 type Props = {
     navigation: NativeStackNavigationProp<any>;
@@ -25,6 +28,21 @@ const RegisterScreen = ({ navigation }: Props) => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [focused, setFocused] = useState<string | null>(null);
+    const {login} = useAuth();
+    const EMAIL_REGEX= /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const [emailError, setEmailError] = useState('');
+    const [university, setUniversity] = useState('');
+    const [accepted, setAccepted] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const validateEmail = (val: string) => {
+        setEmail(val);
+        if (val.length > 0 && !EMAIL_REGEX.test(val)) {
+            setEmailError('Podaj poprawny adres email');
+        } else {
+            setEmailError('');
+        }
+    };
 
     const getPasswordStrength = (): { label: string; color: string; width: string } => {
         if (password.length === 0) return { label: '', color: 'transparent', width: '0%' };
@@ -107,6 +125,7 @@ const RegisterScreen = ({ navigation }: Props) => {
                             onFocus={() => setFocused('email')}
                             onBlur={() => setFocused(null)}
                         />
+                        {emailError?<Text style={styles.errorText}>{emailError}</Text>:null}
                     </View>
 
                     {/* Hasło */}
@@ -128,6 +147,7 @@ const RegisterScreen = ({ navigation }: Props) => {
                                 onFocus={() => setFocused('password')}
                                 onBlur={() => setFocused(null)}
                             />
+
                             <TouchableOpacity
                                 style={styles.eyeButton}
                                 onPress={() => setShowPassword(!showPassword)}
@@ -176,6 +196,33 @@ const RegisterScreen = ({ navigation }: Props) => {
                             onFocus={() => setFocused('confirm')}
                             onBlur={() => setFocused(null)}
                         />
+                        {/*University input field*/}
+                        <Text style={styles.label}>Uczelnia/Kierunek (opcjonalne)</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="np. Politechnika Świętokrzyska, Informatyka"
+                            placeholderTextColor="#555"
+                            value={university}
+                            onChangeText={setUniversity}
+                        />
+
+                        <TouchableOpacity
+                            style={{flexDirection:'row',alignItems:'center',marginBottom:20,gap:12}}
+                            onPress={()=>setAccepted(!accepted)}
+                        >
+                            <View style={{
+                                width: 22, height: 22, borderRadius: 6,
+                                borderWidth: 1.5, borderColor: accepted ? '#6C63FF' : '#3a3a3a',
+                                backgroundColor: accepted ? '#6C63FF' : '#161616',
+                                alignItems: 'center', justifyContent: 'center',
+                            }}>
+                                {accepted && <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>✓</Text>}
+                            </View>
+                            <Text style={{ flex: 1, fontSize: 13, color: '#888' }}>
+                                Akceptuję <Text style={{ color: '#6C63FF' }}>regulamin</Text> i <Text style={{ color: '#6C63FF' }}>politykę prywatności</Text>
+                            </Text>
+                        </TouchableOpacity>
+
                         {confirmPassword.length > 0 && password !== confirmPassword && (
                             <Text style={styles.errorText}>Hasła nie są identyczne</Text>
                         )}
@@ -183,11 +230,13 @@ const RegisterScreen = ({ navigation }: Props) => {
 
                     {/* Przycisk rejestracji */}
                     <TouchableOpacity
-                        style={styles.button}
+                        disabled={!accepted||loading}
+                        style={[styles.button,(!accepted||loading)&&{opacity:0.45}]}
                         onPress={handleRegister}
                         activeOpacity={0.85}
                     >
-                        <Text style={styles.buttonText}>Zarejestruj się</Text>
+                        {loading?<ActivityIndicator size="small" color="fff" />:
+                        <Text style={styles.buttonText}>Zarejestruj się</Text>}
                     </TouchableOpacity>
 
                     {/* Link do logowania */}
