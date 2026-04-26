@@ -1,5 +1,5 @@
 // src/screens/ForgotPasswordScreen.tsx
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import {
     View,
     Text,
@@ -10,8 +10,10 @@ import {
     Platform,
     StatusBar,
     ScrollView,
+    ActivityIndicator
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Animated,{useSharedValue,useAnimatedStyle,withTiming} from "react-native-reanimated";
 
 type Props = {
     navigation: NativeStackNavigationProp<any>;
@@ -24,125 +26,156 @@ const ForgotPasswordScreen = ({ navigation }: Props) => {
     const [focused, setFocused] = useState(false);
     const [step, setStep] = useState<Step>('email');
     const [error, setError] = useState('');
+    const [timer, setTimer] = useState(0);
+    const [loading, setLoading] = useState(false);
 
-    const handleSend = () => {
+
+    //timer countdown
+    useEffect(() => {
+        if(timer<=0)return;
+        const id=setTimeout(()=>setTimer(t=>t-1),1000);
+        return ()=>clearTimeout(id);
+    }, [timer]);
+
+    //Fade between steps
+    const opacity=useSharedValue(1);
+    const fadeStyle=useAnimatedStyle(()=>({opacity:opacity.value}))
+
+    const changeStep=(next:'email'|'sent')=>{
+        opacity.value=withTiming(0,{duration:200});
+        setTimeout(()=>{
+            setStep(next);
+            opacity.value=withTiming(1,{duration:300});
+        },200);
+    };
+
+    const handleSend = async () => {
         if (!email || !email.includes('@')) {
             setError('Podaj prawidłowy adres e-mail');
             return;
         }
         setError('');
-        // --send reset email logic here
-        setStep('sent');
+        setLoading(true);
+        // --send reset email logic here(API)
+        await new Promise(r=>setTimeout(r,1000));
+        setLoading(false);
+        setTimer(60);
+        changeStep('sent');
     };
 
-    if (step === 'sent') {
-        return (
-            <>
-                <StatusBar barStyle="light-content" backgroundColor="#0f0f0f" />
-                <View style={styles.container}>
-                    <View style={styles.sentContainer}>
-                        {/* Animowana ikona sukcesu */}
-                        <View style={styles.successCircle}>
-                            <Text style={styles.successIcon}>✉️</Text>
-                        </View>
-                        <Text style={styles.sentTitle}>Sprawdź skrzynkę</Text>
-                        <Text style={styles.sentSubtitle}>
-                            Wysłaliśmy link do resetowania hasła na adres{' '}
-                            <Text style={styles.sentEmail}>{email}</Text>
-                        </Text>
-                        <Text style={styles.sentHint}>
-                            Nie widzisz wiadomości? Sprawdź folder spam lub wyślij ponownie.
-                        </Text>
-
-                        <TouchableOpacity
-                            style={styles.button}
-                            onPress={() => setStep('email')}
-                            activeOpacity={0.85}
-                        >
-                            <Text style={styles.buttonText}>Wyślij ponownie</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.backLink}
-                            onPress={() => navigation.goBack()}
-                        >
-                            <Text style={styles.backLinkText}>← Wróć do logowania</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </>
-        );
-    }
 
     return (
         <>
             <StatusBar barStyle="light-content" backgroundColor="#0f0f0f" />
-            <KeyboardAvoidingView
-                style={styles.container}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
-                <ScrollView
-                    contentContainerStyle={styles.scrollContent}
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={false}
+            <Animated.View style={[{ flex: 1 }, fadeStyle]}>
+                <KeyboardAvoidingView
+                    style={styles.container}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 >
-                    {/* Ikona */}
-                    <View style={styles.logoContainer}>
-                        <View style={styles.logoCircle}>
-                            <Text style={styles.logoIcon}>🔑</Text>
-                        </View>
-                    </View>
+                    {step === 'email' ? (
+                        <ScrollView
+                            contentContainerStyle={styles.scrollContent}
+                            keyboardShouldPersistTaps="handled"
+                            showsVerticalScrollIndicator={false}
+                        >
+                            <View style={styles.logoContainer}>
+                                <View style={styles.logoCircle}>
+                                    <Text style={styles.logoIcon}>🔑</Text>
+                                </View>
+                            </View>
 
-                    <Text style={styles.title}>Resetuj hasło</Text>
-                    <Text style={styles.subtitle}>
-                        Podaj swój adres e-mail. Wyślemy Ci link do ustawienia nowego hasła.
-                    </Text>
+                            <Text style={styles.title}>Resetuj hasło</Text>
+                            <Text style={styles.subtitle}>
+                                Podaj swój adres e-mail. Wyślemy Ci link do ustawienia nowego hasła.
+                            </Text>
 
-                    {/* Email */}
-                    <View style={styles.inputWrapper}>
-                        <Text style={styles.label}>Adres e-mail</Text>
-                        <TextInput
-                            style={[
-                                styles.input,
-                                focused && styles.inputFocused,
-                                error.length > 0 && styles.inputError,
-                            ]}
-                            placeholder="ty@przykład.com"
-                            placeholderTextColor="#555"
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            autoComplete="email"
-                            value={email}
-                            onChangeText={(t) => {
-                                setEmail(t);
-                                setError('');
-                            }}
-                            onFocus={() => setFocused(true)}
-                            onBlur={() => setFocused(false)}
-                        />
-                        {error.length > 0 && (
-                            <Text style={styles.errorText}>{error}</Text>
-                        )}
-                    </View>
+                            <View style={styles.inputWrapper}>
+                                <Text style={styles.label}>Adres e-mail</Text>
+                                <TextInput
+                                    style={[
+                                        styles.input,
+                                        focused && styles.inputFocused,
+                                        error.length > 0 && styles.inputError,
+                                    ]}
+                                    placeholder="ty@przykład.com"
+                                    placeholderTextColor="#555"
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    autoComplete="email"
+                                    value={email}
+                                    onChangeText={(t) => { setEmail(t); setError(''); }}
+                                    onFocus={() => setFocused(true)}
+                                    onBlur={() => setFocused(false)}
+                                />
+                                {error.length > 0 && (
+                                    <Text style={styles.errorText}>{error}</Text>
+                                )}
+                            </View>
 
-                    {/* Przycisk */}
-                    <TouchableOpacity
-                        style={styles.button}
-                        onPress={handleSend}
-                        activeOpacity={0.85}
-                    >
-                        <Text style={styles.buttonText}>Wyślij link resetujący</Text>
-                    </TouchableOpacity>
+                            {/* Button */}
+                            <TouchableOpacity
+                                style={[styles.button, loading && { opacity: 0.6 }]}
+                                onPress={handleSend}
+                                activeOpacity={0.85}
+                                disabled={loading}
+                            >
+                                {loading
+                                    ? <ActivityIndicator color="#fff" size="small" />
+                                    : <Text style={styles.buttonText}>Wyślij link resetujący</Text>
+                                }
+                            </TouchableOpacity>
 
-                    {/* Wróć */}
-                    <TouchableOpacity
-                        style={styles.backLink}
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Text style={styles.backLinkText}>← Wróć do logowania</Text>
-                    </TouchableOpacity>
-                </ScrollView>
-            </KeyboardAvoidingView>
+                            <TouchableOpacity style={styles.backLink} onPress={() => navigation.goBack()}>
+                                <Text style={styles.backLinkText}>← Wróć do logowania</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+
+                    ) : (
+                        // check email box view
+                        <ScrollView
+                            contentContainerStyle={[styles.scrollContent, { alignItems: 'center' }]}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            <View style={styles.logoContainer}>
+                                <View style={styles.logoCircle}>
+                                    <Text style={styles.logoIcon}>✉️</Text>
+                                </View>
+                            </View>
+
+                            <Text style={styles.title}>Sprawdź skrzynkę</Text>
+                            <Text style={[styles.subtitle, { textAlign: 'center' }]}>
+                                Wysłaliśmy link na adres{' '}
+                                <Text style={{ color: '#ccc', fontWeight: '600' }}>{email}</Text>
+                            </Text>
+                            <Text style={{ color: '#555', fontSize: 13, textAlign: 'center', marginBottom: 32 }}>
+                                Nie widzisz wiadomości? Sprawdź folder spam lub wyślij ponownie.
+                            </Text>
+
+                            {/* Send again button with a timer */}
+                            <TouchableOpacity
+                                style={[styles.button, { width: '100%' }, timer > 0 && { opacity: 0.5 }]}
+                                onPress={() => {
+                                    if (timer > 0) return;
+                                    setLoading(true);
+                                    setTimeout(() => { setLoading(false); setTimer(60); }, 1000);
+                                }}
+                                disabled={timer > 0 || loading}
+                            >
+                                {loading
+                                    ? <ActivityIndicator color="#fff" size="small" />
+                                    : <Text style={styles.buttonText}>
+                                        {timer > 0 ? `Wyślij ponownie (${timer}s)` : 'Wyślij ponownie'}
+                                    </Text>
+                                }
+                            </TouchableOpacity>
+
+                            <TouchableOpacity style={styles.backLink} onPress={() => navigation.goBack()}>
+                                <Text style={styles.backLinkText}>← Wróć do logowania</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+                    )}
+                </KeyboardAvoidingView>
+            </Animated.View>
         </>
     );
 };
