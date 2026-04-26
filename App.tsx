@@ -12,6 +12,7 @@ import HomeScreen from './screens/HomeScreen';
 import SearchScreen from './screens/SearchScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import GroupDashboardScreen from './screens/GroupDashboardScreen';
+import {AuthProvider} from "./contexts/AuthContext";
 
 export type RootStackParamList = {
     MainTabs: undefined;
@@ -94,56 +95,58 @@ const MainTabs = () => {
 
 export default function App() {
     return (
-        <NavigationContainer theme={DarkTheme}>
-            <Stack.Navigator
-                initialRouteName="MainTabs"
-                screenOptions={{
-                    headerShown: false,
-                    animation: 'fade',
-                    animationDuration: 220,
-                }}
-            >
-                <Stack.Screen name="MainTabs" component={MainTabs} />
+        <AuthProvider>
+            <NavigationContainer theme={DarkTheme}>
+                <Stack.Navigator
+                    initialRouteName="MainTabs"
+                    screenOptions={{
+                        headerShown: false,
+                        animation: 'fade',
+                        animationDuration: 220,
+                    }}
+                >
+                    <Stack.Screen name="MainTabs" component={MainTabs} />
 
-                <Stack.Screen
-                    name="Login"
-                    component={LoginScreen}
-                    options={{
-                        headerShown: true,
-                        headerTitle: 'Logowanie',
-                        headerStyle: { backgroundColor: '#0f0f0f' },
-                        headerTintColor: '#fff',
-                        presentation: 'modal',
-                        animation: 'slide_from_bottom',
-                        animationDuration: 350,
-                    }}
-                />
-                <Stack.Screen
-                    name="Register"
-                    component={RegisterScreen}
-                    options={{
-                        headerShown: true,
-                        headerTitle: 'Rejestracja',
-                        headerStyle: { backgroundColor: '#0f0f0f' },
-                        headerTintColor: '#fff',
-                        animation: 'slide_from_right',
-                        animationDuration: 300,
-                    }}
-                />
-                <Stack.Screen
-                    name="ForgotPassword"
-                    component={ForgotPasswordScreen}
-                    options={{
-                        headerShown: true,
-                        headerTitle: 'Resetuj hasło',
-                        headerStyle: { backgroundColor: '#0f0f0f' },
-                        headerTintColor: '#fff',
-                        presentation: 'modal',
-                        animation: 'slide_from_bottom',
-                        animationDuration: 350,
-                    }}
-                />
-            </Stack.Navigator>
-        </NavigationContainer>
+                    <Stack.Screen
+                        name="Login"
+                        component={LoginScreen}
+                        options={{
+                            headerShown: true,
+                            headerTitle: 'Logowanie',
+                            headerStyle: { backgroundColor: '#0f0f0f' },
+                            headerTintColor: '#fff',
+                            presentation: 'modal',
+                            animation: 'slide_from_bottom',
+                            animationDuration: 350,
+                        }}
+                    />
+                    <Stack.Screen
+                        name="Register"
+                        component={RegisterScreen}
+                        options={{
+                            headerShown: true,
+                            headerTitle: 'Rejestracja',
+                            headerStyle: { backgroundColor: '#0f0f0f' },
+                            headerTintColor: '#fff',
+                            animation: 'slide_from_right',
+                            animationDuration: 300,
+                        }}
+                    />
+                    <Stack.Screen
+                        name="ForgotPassword"
+                        component={ForgotPasswordScreen}
+                        options={{
+                            headerShown: true,
+                            headerTitle: 'Resetuj hasło',
+                            headerStyle: { backgroundColor: '#0f0f0f' },
+                            headerTintColor: '#fff',
+                            presentation: 'modal',
+                            animation: 'slide_from_bottom',
+                            animationDuration: 350,
+                        }}
+                    />
+                </Stack.Navigator>
+            </NavigationContainer>
+        </AuthProvider>
     );
 }
