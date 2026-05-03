@@ -89,10 +89,10 @@ function formatSelectedDate(dateKey: string) {
 }
 
 function SimpleCalendar({
-    selectedDay,
-    onSelectDay,
-    eventsMap,
-}: {
+                            selectedDay,
+                            onSelectDay,
+                            eventsMap,
+                        }: {
     selectedDay: string;
     onSelectDay: (d: string) => void;
     eventsMap: Record<string, EventItem[]>;
@@ -257,11 +257,11 @@ export default function GroupDashboardScreen() {
                 const updated = current.map((event) =>
                     event.id === editingEventId
                         ? {
-                              ...event,
-                              title: trimmedTitle,
-                              time: newTime.trim() || undefined,
-                              type: newType,
-                          }
+                            ...event,
+                            title: trimmedTitle,
+                            time: newTime.trim() || undefined,
+                            type: newType,
+                        }
                         : event,
                 );
 
@@ -355,8 +355,8 @@ export default function GroupDashboardScreen() {
                             {selectedEvents.length === 1
                                 ? 'pozycja'
                                 : selectedEvents.length < 5
-                                ? 'pozycje'
-                                : 'pozycji'}
+                                    ? 'pozycje'
+                                    : 'pozycji'}
                         </Text>
                     </View>
 

@@ -13,6 +13,8 @@ import SearchScreen from './screens/SearchScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import GroupDashboardScreen from './screens/GroupDashboardScreen';
 import ChatScreen from './screens/ChatScreen';
+import GroupDetailScreen from "./screens/GroupDetailScreen";
+import GroupViewScreen from "./screens/GroupViewScreen";
 
 export type RootStackParamList = {
     MainTabs: undefined;
@@ -20,6 +22,10 @@ export type RootStackParamList = {
     Register: undefined;
     ForgotPassword: undefined;
     GroupChat: undefined;
+    GroupDetail: {
+        groupId: string;
+        groups: import('./screens/groupTypes').Group[];
+    };
 };
 
 export type BottomTabParamList = {
@@ -27,6 +33,7 @@ export type BottomTabParamList = {
     GroupDashboard: undefined;
     Search: undefined;
     Profile: undefined;
+    GroupView:undefined;
 };
 
 const DarkTheme = {
@@ -73,6 +80,14 @@ const MainTabs = () => {
                 }}
             />
             <Tab.Screen
+                name="GroupView"
+                component={GroupViewScreen}
+                options={{
+                    headerShown: false,
+                    tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🏠</Text>,
+                }}
+            />
+            <Tab.Screen
                 name="Search"
                 component={SearchScreen}
                 options={{
@@ -90,6 +105,7 @@ const MainTabs = () => {
                     tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>👤</Text>,
                 }}
             />
+
         </Tab.Navigator>
     );
 };
@@ -159,6 +175,18 @@ export default function App() {
                         presentation: 'modal',
                         animation: 'slide_from_bottom',
                         animationDuration: 350,
+                    }}
+                />
+                <Stack.Screen
+                    name="GroupDetail"
+                    component={GroupDetailScreen}
+                    options={{
+                        headerShown: true,
+                        headerTitle: '',
+                        headerStyle: { backgroundColor: '#0f0f0f' },
+                        headerTintColor: '#fff',
+                        animation: 'slide_from_right',
+                        animationDuration: 280,
                     }}
                 />
             </Stack.Navigator>
