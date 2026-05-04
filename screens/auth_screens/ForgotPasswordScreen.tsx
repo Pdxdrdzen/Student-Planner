@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated,{useSharedValue,useAnimatedStyle,withTiming} from "react-native-reanimated";
+import {supabase} from '../../lib/supabase'
 
 type Props = {
     navigation: NativeStackNavigationProp<any>;
@@ -56,9 +57,15 @@ const ForgotPasswordScreen = ({ navigation }: Props) => {
         }
         setError('');
         setLoading(true);
-        // --send reset email logic here(API)
-        await new Promise(r=>setTimeout(r,1000));
+
+        const {error}=await supabase.auth.resetPasswordForEmail(email.trim(),{redirectTo: 'studentplanner://reset-password'
+        });
+
         setLoading(false);
+        if(error){
+            setError('Wystapil blad. Sprawdz adres email.');
+            return;
+        }
         setTimer(60);
         changeStep('sent');
     };
@@ -154,10 +161,14 @@ const ForgotPasswordScreen = ({ navigation }: Props) => {
                             {/* Send again button with a timer */}
                             <TouchableOpacity
                                 style={[styles.button, { width: '100%' }, timer > 0 && { opacity: 0.5 }]}
-                                onPress={() => {
+                                onPress={async () => {
                                     if (timer > 0) return;
                                     setLoading(true);
-                                    setTimeout(() => { setLoading(false); setTimer(60); }, 1000);
+                                    await supabase.auth.resetPasswordForEmail(email.trim(),{
+                                        redirectTo: 'studentplanner://reset-password',
+                                    });
+                                    setLoading(false);
+                                    setTimer(60);
                                 }}
                                 disabled={timer > 0 || loading}
                             >

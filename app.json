@@ -1,5 +1,6 @@
 {
   "expo": {
+    "scheme": "studentplanner",
     "name": "StudenckiPlaner",
     "slug": "StudenckiPlaner",
     "version": "1.0.0",

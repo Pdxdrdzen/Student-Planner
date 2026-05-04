@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated, {useSharedValue,useAnimatedStyle, withDelay, withSpring} from "react-native-reanimated";
-import {useAuth} from '../contexts/AuthContext';
+import {useAuth} from '../../contexts/AuthContext';
 
 type Props = {
     navigation: NativeStackNavigationProp<any>;
@@ -28,7 +28,7 @@ const RegisterScreen = ({ navigation }: Props) => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [focused, setFocused] = useState<string | null>(null);
-    const {login} = useAuth();
+    const {register} = useAuth();
     const EMAIL_REGEX= /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const [emailError, setEmailError] = useState('');
     const [university, setUniversity] = useState('');
@@ -53,7 +53,7 @@ const RegisterScreen = ({ navigation }: Props) => {
 
     const strength = getPasswordStrength();
 
-    const handleRegister = () => {
+    const handleRegister = async () => {
         if (!name || !email || !password || !confirmPassword) {
             Alert.alert('Błąd', 'Wypełnij wszystkie pola');
             return;
@@ -66,10 +66,30 @@ const RegisterScreen = ({ navigation }: Props) => {
             Alert.alert('Błąd', 'Hasło musi mieć co najmniej 6 znaków');
             return;
         }
-        // --registration logic here
-        Alert.alert('Sukces', 'Konto zostało utworzone!', [
-            { text: 'OK', onPress: () => navigation.replace('MainTabs') },
-        ]);
+        if(!accepted) {
+            Alert.alert('Błąd','Zaakceptuj regulamin!');
+        }
+        if(!EMAIL_REGEX.test(email)) {
+            Alert.alert('Błąd','Podaj prawidlowy adres email')
+        }
+       setLoading(true);
+       const {error}=await register(email, name, password);
+       setLoading(false);
+       if(error) {
+           if(error.includes('already registered')) {
+               Alert.alert('Błąd','Konto z tym adresem e-mail juz istnieje');
+           }else{
+               Alert.alert('Błąd',error);
+           }
+       }else{
+           Alert.alert(
+               'Sprawdz skrzynke mailowa',
+                    'Wysłaliśmy e-mail potwierdzający. Kliknij link aby aktywować konto.',
+                        [{text:'OK',onPress:()=>navigation.navigate('Login')}]
+           );
+       }
+
+
     };
 
     return (

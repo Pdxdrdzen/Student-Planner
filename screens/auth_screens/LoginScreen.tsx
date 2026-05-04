@@ -9,7 +9,7 @@ import Animated, {
     useSharedValue, useAnimatedStyle, withSequence, withTiming,
 } from 'react-native-reanimated';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
@@ -17,6 +17,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const LoginScreen = ({ navigation }: Props) => {
     const { login } = useAuth();
+    console.log('login function: ', login);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -51,28 +52,37 @@ const LoginScreen = ({ navigation }: Props) => {
     };
 
     const handleLogin = async () => {
-        if (!email || !password) {
+        console.log('handleLogin called');
+        if (!password) {
             triggerShake();
             return;
         }
-        if (!EMAIL_REGEX.test(email)) {
+        if (!EMAIL_REGEX.test(email)||!email) {
             setEmailError('Podaj prawidłowy adres e-mail');
             triggerShake();
             return;
         }
-
         setLoading(true);
-        try {
-            // --authorization logic here (np. API call)
-            await new Promise(resolve => setTimeout(resolve, 1200)); // symulacja API
 
-            // after succesful login, save user in context
-            login({ name: 'Jan Kowalski', email });
-            navigation.replace('MainTabs');
-        } catch {
-            triggerShake();
-        } finally {
+        const timeout=setTimeout(() => {
             setLoading(false);
+            setEmailError('Przekroczono czas oczekiwania. Sprawdz polaczenie internetowe.');
+        },10000);
+        const {error}=await login(email, password);
+        console.log('Error supabase: ', error);
+        clearTimeout(timeout);
+        setLoading(false);
+
+        if(error){
+            triggerShake();
+            if(error.includes('Invalid login credentials')){
+                setEmailError('Nieprawidlowy adres e-mail lub haslo');
+            }else if(error.includes('Email not confirmed')){
+                setEmailError('Potwierdz adres e-mail');
+            }
+            else{
+                setEmailError('Wystąpił błąd. Spróbuj ponownie.');
+            }
         }
     };
 
