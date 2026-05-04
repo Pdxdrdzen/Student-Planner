@@ -18,11 +18,13 @@ import GroupDetailScreen from "./screens/GroupDetailScreen";
 import GroupViewScreen from "./screens/GroupViewScreen";
 import { useAuth } from './contexts/AuthContext';
 import {AuthProvider} from "./contexts/AuthContext";
+import EmailConfirmedScreen from "./screens/auth_screens/EmailConfirmedScreen";
 
 export type RootStackParamList = {
     MainTabs: undefined;
     Login: undefined;
     Register: undefined;
+    EmailConfirmed: undefined;
     ForgotPassword: undefined;
     GroupChat: undefined;
     GroupDetail: {
@@ -129,7 +131,8 @@ const AppNavigator=()=>{
         config: {
             screens: {
                 ResetPassword: 'reset-password',
-                EmailConfirmed: 'email-confirmed'
+                EmailConfirmed: 'email-confirmed',
+                MainTabs: 'main',
             },
         },
     };
@@ -139,85 +142,65 @@ const AppNavigator=()=>{
 return (
     <NavigationContainer theme={DarkTheme}>
         <Stack.Navigator
-            initialRouteName={session?'MainTabs':'Login'}
+           // initialRouteName={session?'MainTabs':'Login'}
             screenOptions={{
                 headerShown: false,
                 animation: 'fade',
                 animationDuration: 220,
             }}
         >
-            <Stack.Screen name="MainTabs" component={MainTabs} />
-
-            <Stack.Screen
-                name="Login"
-                component={LoginScreen}
-                options={{
-                    headerShown: true,
-                    headerTitle: 'Logowanie',
-                    headerStyle: { backgroundColor: '#0f0f0f' },
-                    headerTintColor: '#fff',
-                    presentation: 'modal',
-                    animation: 'slide_from_bottom',
-                    animationDuration: 350,
-                }}
-            />
-
-            <Stack.Screen
-                name="Register"
-                component={RegisterScreen}
-                options={{
-                    headerShown: true,
-                    headerTitle: 'Rejestracja',
-                    headerStyle: { backgroundColor: '#0f0f0f' },
-                    headerTintColor: '#fff',
-                    animation: 'slide_from_right',
-                    animationDuration: 300,
-                }}
-            />
-
-            <Stack.Screen
-                name="ForgotPassword"
-                component={ForgotPasswordScreen}
-                options={{
-                    headerShown: true,
-                    headerTitle: 'Resetuj hasło',
-                    headerStyle: { backgroundColor: '#0f0f0f' },
-                    headerTintColor: '#fff',
-                    presentation: 'modal',
-                    animation: 'slide_from_bottom',
-                    animationDuration: 350,
-                }}
-            />
-
-            <Stack.Screen
-                name="GroupChat"
-                component={ChatScreen}
-                options={{
-                    headerShown: true,
-                    headerTitle: 'Czat grupy',
-                    headerStyle: { backgroundColor: '#0f0f0f' },
-                    headerTintColor: '#fff',
-                    presentation: 'modal',
-                    animation: 'slide_from_bottom',
-                    animationDuration: 350,
-                }}
-            />
-            <Stack.Screen
-                name="GroupDetail"
-                component={GroupDetailScreen}
-                options={{
-                    headerShown: true,
-                    headerTitle: '',
-                    headerStyle: { backgroundColor: '#0f0f0f' },
-                    headerTintColor: '#fff',
-                    animation: 'slide_from_right',
-                    animationDuration: 280,
-                }}
-            />
+            {session?(
+                <>
+                    <Stack.Screen name="MainTabs" component={MainTabs} />
+                    <Stack.Screen name="GroupChat" component={ChatScreen}
+                                  options={{
+                                      headerShown: true, headerTitle: 'Czat grupy',
+                                      headerStyle: { backgroundColor: '#0f0f0f' },
+                                      headerTintColor: '#fff', presentation: 'modal',
+                                      animation: 'slide_from_bottom', animationDuration: 350,
+                                  }}
+                    />
+                    <Stack.Screen name="GroupDetail" component={GroupDetailScreen}
+                                  options={{
+                                      headerShown: true, headerTitle: '',
+                                      headerStyle: { backgroundColor: '#0f0f0f' },
+                                      headerTintColor: '#fff', animation: 'slide_from_right', animationDuration: 280,
+                                  }}
+                    />
+                    <Stack.Screen name="EmailConfirmed" component={EmailConfirmedScreen}
+                                  options={{ headerShown: false }}
+                    />
+                </>
+            ):(<>
+                    <Stack.Screen name="Login" component={LoginScreen}
+                                  options={{
+                                      headerShown: false,
+                                      animation: 'fade', animationDuration: 220,
+                                  }}
+                    />
+                    <Stack.Screen name="Register" component={RegisterScreen}
+                                  options={{
+                                      headerShown: true, headerTitle: 'Rejestracja',
+                                      headerStyle: { backgroundColor: '#0f0f0f' },
+                                      headerTintColor: '#fff', animation: 'slide_from_right', animationDuration: 300,
+                                  }}
+                    />
+                    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen}
+                                  options={{
+                                      headerShown: true, headerTitle: 'Resetuj hasło',
+                                      headerStyle: { backgroundColor: '#0f0f0f' },
+                                      headerTintColor: '#fff', presentation: 'modal',
+                                      animation: 'slide_from_bottom', animationDuration: 350,
+                                  }}
+                    />
+                </>
+            )}
         </Stack.Navigator>
     </NavigationContainer>
-    );
+);
 };
+
+
 export default function App(){
      return(
          <AuthProvider>

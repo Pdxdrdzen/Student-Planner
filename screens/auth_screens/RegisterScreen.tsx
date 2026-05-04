@@ -16,6 +16,7 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated, {useSharedValue,useAnimatedStyle, withDelay, withSpring} from "react-native-reanimated";
 import {useAuth} from '../../contexts/AuthContext';
+import UniversityPicker from "../../components/UniversityPicker";
 
 type Props = {
     navigation: NativeStackNavigationProp<any>;
@@ -32,6 +33,7 @@ const RegisterScreen = ({ navigation }: Props) => {
     const EMAIL_REGEX= /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const [emailError, setEmailError] = useState('');
     const [university, setUniversity] = useState('');
+    const [faculty, setFaculty] = useState('');
     const [accepted, setAccepted] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -218,13 +220,12 @@ const RegisterScreen = ({ navigation }: Props) => {
                         />
                         {/*University input field*/}
                         <Text style={styles.label}>Uczelnia/Kierunek (opcjonalne)</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="np. Politechnika Świętokrzyska, Informatyka"
-                            placeholderTextColor="#555"
-                            value={university}
-                            onChangeText={setUniversity}
-                        />
+                        <UniversityPicker
+                            university={university}
+                            faculty={faculty}
+                            onUniversityChange={(val) => setUniversity(val)}
+                            onFacultyChange={(val) => setFaculty(val)}
+                            />
 
                         <TouchableOpacity
                             style={{flexDirection:'row',alignItems:'center',marginBottom:20,gap:12}}

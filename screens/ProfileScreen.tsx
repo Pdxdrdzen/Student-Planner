@@ -1,5 +1,5 @@
 // src/screens/ProfileScreen.tsx
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {
     View,
     Text,
@@ -9,13 +9,15 @@ import {
     SafeAreaView,
     ScrollView,
     Alert,
+    TextInput,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
-
+import {useAuth} from "../contexts/AuthContext";
+import {supabase} from '../lib/supabase'
 // temp mock - change when backend ready
-const MOCK_USER = {
+/*const MOCK_USER = {
     loggedIn: false,
     name: 'Jan Kowalski',
     email: 'jan@example.com',
@@ -27,11 +29,10 @@ const MOCK_USER = {
     ],
 };
 
+ */
+
 type Props = {
-    navigation: CompositeNavigationProp<
-        BottomTabNavigationProp<any>,
-        NativeStackNavigationProp<any>
-    >;
+    navigation: any;
 };
 
 // Non-logged in screen
@@ -93,8 +94,30 @@ const GroupCard = ({
 
 // Logged in succesfully screen
 const LoggedIn = ({ navigation }: Props) => {
-    const user = MOCK_USER;
+    const {user, logout} = useAuth();
+    const [groups,setGroups]=useState<any[]>([]);
+    const [editingName, setEditingName] = useState(false);
+    const [newName, setNewName] = useState(user?.name ?? '');
+    const [savingName, setSavingName] = useState(false);
 
+    useEffect(() => {
+        if(!user)return;
+        supabase
+            .from('group_members')
+            .select('role,groups(id,name')
+            .eq('user_id',user.id)
+            .then(({data})=>{
+                if(data){
+                    setGroups(data.map((d:any)=>({
+                        id: d.groups.id,
+                        name: d.groups.name,
+                        role: d.role==='admin'?'starosta':'student',
+                        members: 0,
+                    })));
+                }
+            })
+
+    }, [user])
     const handleLogout = () => {
         Alert.alert('Wyloguj się', 'Na pewno chcesz się wylogować?', [
             { text: 'Anuluj', style: 'cancel' },
@@ -106,66 +129,99 @@ const LoggedIn = ({ navigation }: Props) => {
             },
         ]);
     };
+    const handleSaveName=async()=>{
+        if(!newName.trim()||!user) return;
+        setSavingName(true);
+        await supabase.from('profiles').update({name: newName.trim()}).eq('id',user.id);
+        setSavingName(false);
+        setEditingName(false);
+    }
+
+    const initials=(user?.name??'U')
+        .split(' ')
+        .map(w=>w[0])
+        .join('')
+        .toUpperCase()
+        .slice(0,2);
 
     return (
-        <ScrollView
-            contentContainerStyle={styles.loggedScrollContent}
-            showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={styles.loggedScrollContent} showsVerticalScrollIndicator={false}>
             {/* Avatar + dane */}
             <View style={styles.profileHeader}>
                 <View style={styles.avatarCircle}>
-                    <Text style={styles.avatarText}>{user.avatar}</Text>
+                    <Text style={styles.avatarText}>{initials}</Text>
                 </View>
-                <Text style={styles.profileName}>{user.name}</Text>
-                <Text style={styles.profileEmail}>{user.email}</Text>
+                <Text style={styles.profileName}>{user?.name}</Text>
+                <Text style={styles.profileEmail}>{user?.email}</Text>
             </View>
 
-            {/* Dane logowania */}
+            {/* Dane konta */}
             <View style={styles.section}>
                 <Text style={styles.sectionLabel}>DANE KONTA</Text>
                 <View style={styles.infoCard}>
+                    {/* Email */}
                     <View style={styles.infoRow}>
                         <Text style={styles.infoIcon}>✉️</Text>
                         <View style={styles.infoTextBlock}>
                             <Text style={styles.infoKey}>Adres e-mail</Text>
-                            <Text style={styles.infoValue}>{user.email}</Text>
+                            <Text style={styles.infoValue}>{user?.email}</Text>
                         </View>
                     </View>
                     <View style={styles.divider} />
+
+                    {/* Nazwa — edytowalna inline */}
                     <View style={styles.infoRow}>
                         <Text style={styles.infoIcon}>👤</Text>
                         <View style={styles.infoTextBlock}>
                             <Text style={styles.infoKey}>Nazwa użytkownika</Text>
-                            <Text style={styles.infoValue}>{user.name}</Text>
+                            {editingName ? (
+                                <TextInput
+                                    style={styles.inlineInput}
+                                    value={newName}
+                                    onChangeText={setNewName}
+                                    autoFocus
+                                    onSubmitEditing={handleSaveName}
+                                    returnKeyType="done"
+                                />
+                            ) : (
+                                <Text style={styles.infoValue}>{user?.name}</Text>
+                            )}
                         </View>
-                        <TouchableOpacity>
-                            <Text style={styles.editLink}>Edytuj</Text>
-                        </TouchableOpacity>
+                        {editingName ? (
+                            <TouchableOpacity onPress={handleSaveName} disabled={savingName}>
+                                <Text style={styles.editLink}>
+                                    {savingName ? '...' : 'Zapisz'}
+                                </Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity onPress={() => setEditingName(true)}>
+                                <Text style={styles.editLink}>Edytuj</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                     <View style={styles.divider} />
+
+                    {/* Hasło */}
                     <View style={styles.infoRow}>
                         <Text style={styles.infoIcon}>🔑</Text>
                         <View style={styles.infoTextBlock}>
                             <Text style={styles.infoKey}>Hasło</Text>
                             <Text style={styles.infoValue}>••••••••</Text>
                         </View>
-                        <TouchableOpacity
-                            onPress={() => navigation.navigate('ForgotPassword')}
-                        >
+                        <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
                             <Text style={styles.editLink}>Zmień</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </View>
 
-            {/* Twoje grupy */}
+            {/* Grupy */}
             <View style={styles.section}>
                 <View style={styles.sectionRow}>
                     <Text style={styles.sectionLabel}>TWOJE GRUPY</Text>
-                    <Text style={styles.sectionCount}>{user.groups.length}</Text>
+                    <Text style={styles.sectionCount}>{groups.length}</Text>
                 </View>
-                {user.groups.length === 0 ? (
+                {groups.length === 0 ? (
                     <View style={styles.emptyGroups}>
                         <Text style={styles.emptyGroupsText}>
                             Nie należysz jeszcze do żadnej grupy.
@@ -176,7 +232,7 @@ const LoggedIn = ({ navigation }: Props) => {
                     </View>
                 ) : (
                     <View style={styles.groupsList}>
-                        {user.groups.map((group) => (
+                        {groups.map((group) => (
                             <GroupCard key={group.id} group={group} />
                         ))}
                     </View>
@@ -184,11 +240,7 @@ const LoggedIn = ({ navigation }: Props) => {
             </View>
 
             {/* Wyloguj */}
-            <TouchableOpacity
-                style={styles.logoutButton}
-                onPress={handleLogout}
-                activeOpacity={0.8}
-            >
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
                 <Text style={styles.logoutText}>Wyloguj się</Text>
             </TouchableOpacity>
         </ScrollView>
@@ -197,13 +249,14 @@ const LoggedIn = ({ navigation }: Props) => {
 
 const ProfileScreen = ({ navigation }: Props) => {
     // Change MOCK_USER.loggedIn later to real state when auth is ready
-    const isLoggedIn = MOCK_USER.loggedIn;
+    //const isLoggedIn = MOCK_USER.loggedIn;
+    const {user}= useAuth();
 
     return (
         <>
             <StatusBar barStyle="light-content" backgroundColor="#0f0f0f" />
             <SafeAreaView style={styles.safeArea}>
-                {isLoggedIn ? (
+                {user ? (
                     <LoggedIn navigation={navigation} />
                 ) : (
                     <NotLoggedIn navigation={navigation} />
@@ -482,6 +535,15 @@ const styles = StyleSheet.create({
         color: '#FF4C4C',
         fontSize: 15,
         fontWeight: '600' as const,
+    },
+    inlineInput: {
+        fontSize: 14,
+        color: '#fff',
+        fontWeight: '500',
+        borderBottomWidth: 1,
+        borderBottomColor: '#6C63FF',
+        paddingVertical: 2,
+        minWidth: 120,
     },
 });
 

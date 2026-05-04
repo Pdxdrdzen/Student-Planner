@@ -1,6 +1,6 @@
 // groupTypes.ts
 
-export type UserRole = 'admin' | 'staroста' | 'student';
+export type UserRole = 'admin' | 'starostа' | 'student';
 
 export type EventType = 'deadline' | 'event' | 'exam' | 'meeting';
 
@@ -63,7 +63,7 @@ export const MOCK_GROUPS: Group[] = [
         createdAt: '2024-10-01T00:00:00Z',
         members: [
             { id: 'user-1', name: 'Admin Testowy', email: 'admin@uczelnia.pl', role: 'admin', avatarInitials: 'AT' },
-            { id: 'user-2', name: 'Karolina Wiśniewska', email: 'k.wisniewska@student.pl', role: 'staroста', avatarInitials: 'KW' },
+            { id: 'user-2', name: 'Karolina Wiśniewska', email: 'k.wisniewska@student.pl', role: 'starostа', avatarInitials: 'KW' },
             { id: 'user-3', name: 'Marek Kowalski', email: 'm.kowalski@student.pl', role: 'student', avatarInitials: 'MK' },
             { id: 'user-4', name: 'Anna Nowak', email: 'a.nowak@student.pl', role: 'student', avatarInitials: 'AN' },
             { id: 'user-5', name: 'Piotr Zając', email: 'p.zajac@student.pl', role: 'student', avatarInitials: 'PZ' },
@@ -138,12 +138,12 @@ export function canManageGroup(group: Group, userId: string): boolean {
 
 export function canManageMembers(group: Group, userId: string): boolean {
     const role = getUserRoleInGroup(group, userId);
-    return role === 'admin' || role === 'staroста';
+    return role === 'admin' || role === 'starostа';
 }
 
 export function canCreateEvents(group: Group, userId: string): boolean {
     const role = getUserRoleInGroup(group, userId);
-    return role === 'admin' || role === 'staroста';
+    return role === 'admin' || role === 'starostа';
 }
 
 export function formatDueDate(isoString: string): string {
