@@ -21,6 +21,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import AnimatedBackground from '../components/AnimatedBackground';
+import {useAuth} from '../contexts/AuthContext'
 
 type Props = {
     navigation: CompositeNavigationProp<
@@ -116,8 +117,9 @@ const AnimatedCard = ({
 
 const HomeScreen = ({ navigation }: Props) => {
     const hour = new Date().getHours();
-    const greeting =
-        hour < 12 ? 'Dzień dobry' : hour < 18 ? 'Witaj' : 'Dobry wieczór';
+    const {user} = useAuth();
+    const greeting = hour < 12 ? 'Dzień dobry' : hour < 18 ? 'Witaj' : 'Dobry wieczór';
+    const greetingFull = user?.name ? `${greeting}, ${user.name.split(' ')[0]}` : greeting;
 
     // Hero animations
     const badgeY = useSharedValue(-20);
@@ -224,6 +226,7 @@ const HomeScreen = ({ navigation }: Props) => {
                     </View>
 
                     {/* Footer */}
+                    {!user&&(
                     <View style={styles.footer}>
                         <View style={styles.footerCard}>
                             <Text style={styles.footerIcon}>🎓</Text>
@@ -242,6 +245,7 @@ const HomeScreen = ({ navigation }: Props) => {
                             <Text style={styles.loginButtonText}>Zaloguj się / Zarejestruj</Text>
                         </TouchableOpacity>
                     </View>
+                    )}
                 </ScrollView>
             </SafeAreaView>
         </>

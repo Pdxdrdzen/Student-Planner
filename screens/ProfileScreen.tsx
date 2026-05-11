@@ -124,8 +124,7 @@ const LoggedIn = ({ navigation }: Props) => {
             {
                 text: 'Wyloguj',
                 style: 'destructive',
-                onPress: () => {
-                },
+                onPress: logout
             },
         ]);
     };
