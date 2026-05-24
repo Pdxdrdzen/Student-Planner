@@ -11,7 +11,7 @@ import {
     Alert,
     FlatList,
     Platform,
-    ActivityIndicator,
+    ActivityIndicator, KeyboardAvoidingView,
 } from 'react-native';
 import {
     GroupEvent,
@@ -28,6 +28,7 @@ import {
 } from './groupTypes';
 import {useAuth} from "../contexts/AuthContext";
 import {useGroups} from "../hooks/useGroups";
+import DateTimePicker from '@react-native-community/datetimepicker'
 
 // ─── Kolory ───────────────────────────────────────────────────────────────────
 const C = {
@@ -200,112 +201,190 @@ const AddEventModal = ({
     const [title, setTitle] = useState('');
     const [desc, setDesc] = useState('');
     const [type, setType] = useState<EventType>('deadline');
-    const [dateStr, setDateStr] = useState('');
-    const [timeStr, setTimeStr] = useState('23:59');
+    const [date, setDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showTimePicker, setShowTimePicker] = useState(false);
 
     const eventTypes: { key: EventType; label: string; icon: string }[] = [
-        { key: 'deadline', label: 'Termin', icon: '📋' },
-        { key: 'exam', label: 'Egzamin', icon: '📝' },
-        { key: 'event', label: 'Wydarzenie', icon: '🎬' },
-        { key: 'meeting', label: 'Spotkanie', icon: '👥' },
+        { key: 'deadline', label: 'Termin',     icon: '📋' },
+        { key: 'exam',     label: 'Egzamin',    icon: '📝' },
+        { key: 'event',    label: 'Wydarzenie', icon: '🎬' },
+        { key: 'meeting',  label: 'Spotkanie',  icon: '👥' },
     ];
 
-    const handle = () => {
-        if (!title.trim()) { Alert.alert('Błąd', 'Tytuł jest wymagany.'); return; }
-        if (!dateStr.trim()) { Alert.alert('Błąd', 'Data jest wymagana (format: YYYY-MM-DD).'); return; }
+    const formatDate = (d: Date) =>
+        d.toLocaleDateString('pl-PL', { day: '2-digit', month: 'long', year: 'numeric' });
 
-        const combined = new Date(`${dateStr}T${timeStr}:00`);
-        if (isNaN(combined.getTime())) {
-            Alert.alert('Błąd', 'Nieprawidłowa data. Użyj formatu YYYY-MM-DD.');
+    const formatTime = (d: Date) =>
+        d.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+
+    const handle = () => {
+        if (!title.trim()) {
+            Alert.alert('Błąd', 'Tytuł jest wymagany.');
             return;
         }
-
-        onAdd(title.trim(), desc.trim(), type, combined);
-        setTitle(''); setDesc(''); setDateStr(''); setTimeStr('23:59'); setType('deadline');
-        onClose();
+        onAdd(title.trim(), desc.trim(), type, date);
+        setTitle(''); setDesc(''); setType('deadline');
+        setDate(new Date()); onClose();
     };
 
     return (
-        <Modal visible={visible} animationType="slide" transparent presentationStyle="overFullScreen">
-            <View style={styles.modalOverlay}>
-                <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled">
-                    <View style={styles.modalSheet}>
-                        <View style={styles.modalHandle} />
-                        <Text style={styles.modalTitle}>Nowe wydarzenie</Text>
+        <Modal
+            visible={visible}
+            animationType="slide"
+            transparent
+            presentationStyle="overFullScreen"
+        >
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={0}
+            >
+                <View style={styles.modalOverlay}>
+                    <ScrollView
+                        contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        <View style={styles.modalSheet}>
+                            <View style={styles.modalHandle} />
+                            <Text style={styles.modalTitle}>Nowe wydarzenie</Text>
 
-                        {/* Typ */}
-                        <Text style={styles.inputLabel}>Typ wydarzenia</Text>
-                        <View style={styles.typeRow}>
-                            {eventTypes.map(et => (
+                            {/* Typ */}
+                            <Text style={styles.inputLabel}>Typ wydarzenia</Text>
+                            <View style={styles.typeRow}>
+                                {eventTypes.map(et => (
+                                    <TouchableOpacity
+                                        key={et.key}
+                                        style={[styles.typeBtn, type === et.key && styles.typeBtnActive]}
+                                        onPress={() => setType(et.key)}
+                                    >
+                                        <Text style={styles.typeBtnIcon}>{et.icon}</Text>
+                                        <Text style={[styles.typeBtnLabel, type === et.key && styles.typeBtnLabelActive]}>
+                                            {et.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Tytuł */}
+                            <Text style={styles.inputLabel}>Tytuł *</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="np. Sprawozdanie z laboratorium"
+                                placeholderTextColor={C.textDim}
+                                value={title}
+                                onChangeText={setTitle}
+                                returnKeyType="next"
+                            />
+
+                            {/* Opis */}
+                            <Text style={styles.inputLabel}>Opis (opcjonalny)</Text>
+                            <TextInput
+                                style={[styles.input, styles.inputMultiline]}
+                                placeholder="Szczegóły..."
+                                placeholderTextColor={C.textDim}
+                                value={desc}
+                                onChangeText={setDesc}
+                                multiline
+                                numberOfLines={3}
+                            />
+
+                            {/* Data i godzina — przyciski otwierające natywne pickery */}
+                            <View style={styles.dateRow}>
+                                <View style={{ flex: 2 }}>
+                                    <Text style={styles.inputLabel}>Data *</Text>
+                                    <TouchableOpacity
+                                        style={[styles.input, styles.pickerButton]}
+                                        onPress={() => { setShowTimePicker(false); setShowDatePicker(true); }}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={styles.pickerButtonText}>📅 {formatDate(date)}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={{ flex: 1, marginLeft: 10 }}>
+                                    <Text style={styles.inputLabel}>Godzina</Text>
+                                    <TouchableOpacity
+                                        style={[styles.input, styles.pickerButton]}
+                                        onPress={() => { setShowDatePicker(false); setShowTimePicker(true); }}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={styles.pickerButtonText}>🕐 {formatTime(date)}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            {/* Natywny picker daty */}
+                            {showDatePicker && (
+                                <DateTimePicker
+                                    value={date}
+                                    mode="date"
+                                    display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                                    minimumDate={new Date()}
+                                    onChange={(_, selected) => {
+                                        if (Platform.OS === 'android') setShowDatePicker(false);
+                                        if (selected) {
+                                            const updated = new Date(date);
+                                            updated.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+                                            setDate(updated);
+                                        }
+                                    }}
+                                    themeVariant="dark"
+                                    accentColor={C.accent}
+                                    locale="pl-PL"
+                                />
+                            )}
+                            {/* Na iOS — przycisk zamknięcia pickera */}
+                            {showDatePicker && Platform.OS === 'ios' && (
                                 <TouchableOpacity
-                                    key={et.key}
-                                    style={[styles.typeBtn, type === et.key && styles.typeBtnActive]}
-                                    onPress={() => setType(et.key)}
+                                    style={styles.pickerDoneBtn}
+                                    onPress={() => setShowDatePicker(false)}
                                 >
-                                    <Text style={styles.typeBtnIcon}>{et.icon}</Text>
-                                    <Text style={[styles.typeBtnLabel, type === et.key && styles.typeBtnLabelActive]}>
-                                        {et.label}
-                                    </Text>
+                                    <Text style={styles.pickerDoneText}>Gotowe ✓</Text>
                                 </TouchableOpacity>
-                            ))}
-                        </View>
+                            )}
 
-                        <Text style={styles.inputLabel}>Tytuł *</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="np. Sprawozdanie z laboratorium"
-                            placeholderTextColor={C.textDim}
-                            value={title}
-                            onChangeText={setTitle}
-                        />
-
-                        <Text style={styles.inputLabel}>Opis (opcjonalny)</Text>
-                        <TextInput
-                            style={[styles.input, styles.inputMultiline]}
-                            placeholder="Szczegóły..."
-                            placeholderTextColor={C.textDim}
-                            value={desc}
-                            onChangeText={setDesc}
-                            multiline
-                            numberOfLines={3}
-                        />
-
-                        <View style={styles.dateRow}>
-                            <View style={{ flex: 2 }}>
-                                <Text style={styles.inputLabel}>Data * (YYYY-MM-DD)</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="2025-06-15"
-                                    placeholderTextColor={C.textDim}
-                                    value={dateStr}
-                                    onChangeText={setDateStr}
-                                    keyboardType="numeric"
+                            {/* Natywny picker godziny */}
+                            {showTimePicker && (
+                                <DateTimePicker
+                                    value={date}
+                                    mode="time"
+                                    display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
+                                    is24Hour={true}
+                                    onChange={(_, selected) => {
+                                        if (Platform.OS === 'android') setShowTimePicker(false);
+                                        if (selected) {
+                                            const updated = new Date(date);
+                                            updated.setHours(selected.getHours(), selected.getMinutes());
+                                            setDate(updated);
+                                        }
+                                    }}
+                                    themeVariant="dark"
+                                    accentColor={C.accent}
+                                    locale="pl-PL"
                                 />
-                            </View>
-                            <View style={{ flex: 1, marginLeft: 10 }}>
-                                <Text style={styles.inputLabel}>Godzina</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="23:59"
-                                    placeholderTextColor={C.textDim}
-                                    value={timeStr}
-                                    onChangeText={setTimeStr}
-                                    keyboardType="numeric"
-                                />
+                            )}
+                            {showTimePicker && Platform.OS === 'ios' && (
+                                <TouchableOpacity
+                                    style={styles.pickerDoneBtn}
+                                    onPress={() => setShowTimePicker(false)}
+                                >
+                                    <Text style={styles.pickerDoneText}>Gotowe ✓</Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {/* Przyciski */}
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity style={styles.btnCancel} onPress={onClose}>
+                                    <Text style={styles.btnCancelText}>Anuluj</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.btnPrimary} onPress={handle}>
+                                    <Text style={styles.btnPrimaryText}>Dodaj</Text>
+                                </TouchableOpacity>
                             </View>
                         </View>
-
-                        <View style={styles.modalButtons}>
-                            <TouchableOpacity style={styles.btnCancel} onPress={onClose}>
-                                <Text style={styles.btnCancelText}>Anuluj</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.btnPrimary} onPress={handle}>
-                                <Text style={styles.btnPrimaryText}>Dodaj</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </ScrollView>
-            </View>
+                    </ScrollView>
+                </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 };
@@ -830,4 +909,26 @@ const styles = StyleSheet.create({
         backgroundColor: C.accent, alignItems: 'center',
     },
     btnPrimaryText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+    pickerButton: {
+        justifyContent: 'center',
+        paddingVertical: 12,
+    },
+    pickerButtonText: {
+        color: C.text,
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    pickerDoneBtn: {
+        alignSelf: 'flex-end',
+        marginBottom: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        backgroundColor: C.accent,
+        borderRadius: 10,
+    },
+    pickerDoneText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 14,
+    },
 });
