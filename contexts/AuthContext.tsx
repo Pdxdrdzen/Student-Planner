@@ -5,9 +5,10 @@ import {Session} from "@supabase/supabase-js";
 import * as Linking from 'expo-linking';
 
 type User = {
-    id:string;
+    id: string;
     name: string;
     email: string;
+    university: string | null;
 } | null;
 
 type AuthContextType = {
@@ -87,7 +88,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.log('fetchprofile data:', JSON.stringify(data));
             console.log('fetchprofile error: ', JSON.stringify(error));
             if (data && !error) {
-                setUser({id: data.id, name: data.name, email: sessionData.session?.user?.email ?? ''});
+                setUser({
+                    id: data.id,
+                    name: data.name,
+                    email: sessionData.session?.user?.email ?? '',
+                    university: data.university ?? null,
+                });
             } else {
                 setUser(null);
                 await supabase.auth.signOut();
@@ -129,21 +135,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             return{error: 'Brak polaczenia z internetem'};
         }
     };
-    const register=async (email: string, password: string,name:string,university?:string) => {
-        console.log('register tryout: : ', JSON.stringify({email,password}));
+    // NOWA:
+    const register = async (email: string, password: string, name: string, university?: string) => {
         const {data, error} = await supabase.auth.signUp({
             email: email.trim(),
             password: password.trim(),
-          // options: {data:{name}},
-        })
-        console.log('data: ',JSON.stringify(data));
-        console.log('Supabase error:', JSON.stringify(error));
-        if(error) return {error: error.message};
+            options: { data: { name: name.trim() } },
+        });
 
-        if(data.user&&university){
-            await supabase.from('profiles').update({university}).eq('id', data.user.id);
+        if (error) return {error: error.message};
 
-        }return {error: null};
+        if (data.user) {
+            await supabase
+                .from('profiles')
+                .update({
+                    name: name.trim(),
+                    email: email.trim().toLowerCase(),
+                    university: university ?? null,
+                })
+                .eq('id', data.user.id);
+        }
+        return {error: null};
     };
     const logout = async () => {
         await supabase.auth.signOut();

@@ -38,6 +38,7 @@ export function useGroups(userId: string | null) {
                         adminId: g.admin_id,
                         starostaId: g.starosta_id,
                         color: g.color ?? '#6C63FF',
+                        isPublic: g.is_public??false,
                         createdAt: g.created_at,
                         members: (members ?? []).map(m => ({
                             id: m.user_id,

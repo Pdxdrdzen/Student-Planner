@@ -244,14 +244,13 @@ export default function GroupViewScreen({ navigation }: Props) {
     const { groups, loading, error, createGroup } = useGroups(user?.id ?? null);
     const isAdmin = true;
     const [showCreate, setShowCreate] = useState(false);
-    const [filter, setFilter] = useState<'all' | 'mine'>('all');
-
-    // FIX 3: user może być null — opcjonalne łańcuchowanie
-    const visibleGroups = groups.filter(g =>
-        filter === 'all'
-            ? true
-            : g.members.some((m: { id: string }) => m.id === user?.id)
+    const [filter, setFilter] = useState<'all' | 'mine'>('mine');
+    const myGroups = groups.filter(g =>
+        g.members.some((m: { id: string }) => m.id === user?.id)
     );
+    const allPublicGroups = groups.filter(g => g.isPublic);
+
+    const visibleGroups = filter === 'mine' ? myGroups : allPublicGroups;
 
     const handleCreate = async (name: string, desc: string, code: string) => {
         console.log('HandleCreate called');

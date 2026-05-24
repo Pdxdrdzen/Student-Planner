@@ -75,7 +75,7 @@ const RegisterScreen = ({ navigation }: Props) => {
             Alert.alert('Błąd','Podaj prawidlowy adres email')
         }
        setLoading(true);
-       const {error}=await register(email, name, password);
+       const {error}=await register(email, password,name,university||undefined);
        setLoading(false);
        if(error) {
            if(error.includes('already registered')) {

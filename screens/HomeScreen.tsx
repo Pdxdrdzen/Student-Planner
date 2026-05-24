@@ -224,7 +224,7 @@ const HomeScreen = ({ navigation }: Props) => {
                         </View>
                         <TouchableOpacity
                             style={styles.loginButton}
-                            onPress={() => navigation.navigate('Login')}
+                            onPress={() => navigation.getParent()?.navigate('Login')}
                             activeOpacity={0.85}
                         >
                             <Text style={styles.loginButtonText}>Zaloguj się / Zarejestruj</Text>

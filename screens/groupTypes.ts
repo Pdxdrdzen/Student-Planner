@@ -32,6 +32,7 @@ export interface Group {
     events: GroupEvent[];
     createdAt: string;
     color: string;
+    isPublic: boolean;
 }
 
 export interface CurrentUser {
