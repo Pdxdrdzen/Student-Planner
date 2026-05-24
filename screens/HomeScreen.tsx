@@ -22,6 +22,8 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import AnimatedBackground from '../components/AnimatedBackground';
 import {useAuth} from '../contexts/AuthContext'
+import { Users, Search, User, ChevronRight, GraduationCap } from 'lucide-react-native';
+import { LucideIcon } from 'lucide-react-native';
 
 type Props = {
     navigation: CompositeNavigationProp<
@@ -31,7 +33,7 @@ type Props = {
 };
 
 type QuickLink = {
-    icon: string;
+    icon: LucideIcon;
     label: string;
     description: string;
     tab: string;
@@ -39,27 +41,9 @@ type QuickLink = {
 };
 
 const QUICK_LINKS: QuickLink[] = [
-    {
-        icon: '👥',
-        label: 'Grupy',
-        description: 'Dołącz lub zarządzaj grupami',
-        tab: 'GroupDashboard',
-        accent: '#6C63FF',
-    },
-    {
-        icon: '🔍',
-        label: 'Szukaj',
-        description: 'Znajdź grupy i treści',
-        tab: 'Search',
-        accent: '#3ECFCF',
-    },
-    {
-        icon: '👤',
-        label: 'Profil',
-        description: 'Twoje konto i ustawienia',
-        tab: 'Profile',
-        accent: '#FF6B9D',
-    },
+    { icon: Users,  label: 'Grupy',   description: 'Dołącz lub zarządzaj grupami', tab: 'GroupDashboard', accent: '#6C63FF' },
+    { icon: Search, label: 'Szukaj',  description: 'Znajdź grupy i treści',        tab: 'Search',         accent: '#3ECFCF' },
+    { icon: User,   label: 'Profil',  description: 'Twoje konto i ustawienia',     tab: 'Profile',        accent: '#FF6B9D' },
 ];
 
 const AnimatedCard = ({
@@ -103,13 +87,14 @@ const AnimatedCard = ({
                         { backgroundColor: item.accent + '1A' },
                     ]}
                 >
-                    <Text style={styles.cardIcon}>{item.icon}</Text>
+                    <item.icon size={22} color={item.accent} strokeWidth={1.8} />
+
                 </View>
                 <View style={styles.cardText}>
                     <Text style={styles.cardLabel}>{item.label}</Text>
                     <Text style={styles.cardDescription}>{item.description}</Text>
                 </View>
-                <Text style={[styles.cardArrow, { color: item.accent }]}>›</Text>
+                <ChevronRight size={20} color={item.accent} strokeWidth={2} />
             </TouchableOpacity>
         </Animated.View>
     );
@@ -229,7 +214,7 @@ const HomeScreen = ({ navigation }: Props) => {
                     {!user&&(
                     <View style={styles.footer}>
                         <View style={styles.footerCard}>
-                            <Text style={styles.footerIcon}>🎓</Text>
+                            <GraduationCap size={28} color="#888" strokeWidth={1.5} />
                             <View style={styles.footerTextBlock}>
                                 <Text style={styles.footerTitle}>Nowy tutaj?</Text>
                                 <Text style={styles.footerDesc}>
@@ -360,9 +345,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center' as const,
         marginRight: 14,
     },
-    cardIcon: {
-        fontSize: 22,
-    },
     cardText: {
         flex: 1,
     },
@@ -375,11 +357,6 @@ const styles = StyleSheet.create({
     cardDescription: {
         fontSize: 13,
         color: '#666',
-    },
-    cardArrow: {
-        fontSize: 24,
-        fontWeight: '300' as const,
-        marginLeft: 8,
     },
     footer: {
         marginTop: 32,

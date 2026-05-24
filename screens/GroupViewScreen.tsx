@@ -24,6 +24,8 @@ import {
 } from '../screens/groupTypes';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroups } from '../hooks/useGroups';
+import { Users, Calendar, Plus, Star, ShieldCheck, GraduationCap, ChevronRight } from 'lucide-react-native';
+import { ClipboardList, BookOpen, Clapperboard, UsersRound } from 'lucide-react-native';
 
 type Props = {
     navigation: any;
@@ -45,8 +47,20 @@ const C = {
     starostaColor: '#FFD700',
 };
 
+const EVENT_TYPE_ICONS: Record<string, React.ReactElement> = {
+    deadline: <ClipboardList size={12} color="#888" strokeWidth={2} />,
+    exam:     <BookOpen      size={12} color="#888" strokeWidth={2} />,
+    event:    <Clapperboard  size={12} color="#888" strokeWidth={2} />,
+    meeting:  <UsersRound    size={12} color="#888" strokeWidth={2} />,
+};
+
 // ─── Rola badge ───────────────────────────────────────────────────────────────
 const RoleBadge = ({ role }: { role: UserRole }) => {
+    const ROLE_ICONS: Record<UserRole, React.ReactElement> = {
+        admin:    <ShieldCheck  size={10} color={C.accent}        strokeWidth={2.5} />,
+        starosta: <Star         size={10} color={C.starostaColor} strokeWidth={2.5} />,
+        student:  <GraduationCap size={10} color={C.textMuted}   strokeWidth={2} />,
+    };
     const config: Record<UserRole, { label: string; color: string }> = {
         admin:    { label: 'Admin',    color: C.accent },
         starosta: { label: 'Starosta', color: C.starostaColor },
@@ -54,7 +68,8 @@ const RoleBadge = ({ role }: { role: UserRole }) => {
     };
     const { label, color } = config[role];
     return (
-        <View style={[styles.badge, { borderColor: color }]}>
+        <View style={[styles.badge, { borderColor: color, flexDirection: 'row', alignItems: 'center', gap: 3 }]}>
+            {ROLE_ICONS[role]}
             <Text style={[styles.badgeText, { color }]}>{label}</Text>
         </View>
     );
@@ -124,7 +139,7 @@ const GroupCard = ({
                                     { backgroundColor: getEventUrgencyColor(ev.dueDate) },
                                 ]}
                             />
-                            <Text style={styles.upcomingIcon}>{getEventIcon(ev.type)}</Text>
+                            {EVENT_TYPE_ICONS[ev.type]}
                             <Text style={styles.upcomingTitle} numberOfLines={1}>{ev.title}</Text>
                             <Text style={styles.upcomingDate}>{formatDueDate(ev.dueDate)}</Text>
                         </View>
@@ -138,7 +153,10 @@ const GroupCard = ({
                 onPress={onCalendarPress}
                 activeOpacity={0.8}
             >
-                <Text style={styles.calendarBtnText}>📅 Kalendarz</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Calendar size={14} color={C.accent} strokeWidth={2} />
+                    <Text style={styles.calendarBtnText}>Kalendarz</Text>
+                </View>
             </TouchableOpacity>
         </TouchableOpacity>
     );
@@ -255,11 +273,12 @@ export default function GroupViewScreen({ navigation }: Props) {
                 </View>
                 {isAdmin && (
                     <TouchableOpacity
-                        style={styles.addBtn}
+                        style={[styles.addBtn, { flexDirection: 'row', alignItems: 'center', gap: 5 }]}
                         onPress={() => setShowCreate(true)}
                         activeOpacity={0.8}
                     >
-                        <Text style={styles.addBtnText}>+ Nowa</Text>
+                        <Plus size={16} color="#fff" strokeWidth={2.5} />
+                        <Text style={styles.addBtnText}>Nowa</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -287,8 +306,7 @@ export default function GroupViewScreen({ navigation }: Props) {
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                     <View style={styles.empty}>
-                        <Text style={styles.emptyIcon}>👥</Text>
-                        <Text style={styles.emptyText}>Brak grup</Text>
+                        <Users size={52} color={C.textDim} strokeWidth={1.2} style={{ marginBottom: 12 }} />                        <Text style={styles.emptyText}>Brak grup</Text>
                         <Text style={styles.emptySubtext}>
                             {isAdmin
                                 ? 'Utwórz pierwszą grupę przyciskiem powyżej.'

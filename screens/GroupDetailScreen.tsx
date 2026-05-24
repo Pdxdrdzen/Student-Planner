@@ -29,6 +29,13 @@ import {
 import {useAuth} from "../contexts/AuthContext";
 import {useGroups} from "../hooks/useGroups";
 import DateTimePicker from '@react-native-community/datetimepicker'
+import {
+    ClipboardList, BookOpen, Clapperboard, UsersRound,
+    Trash2, Star, Plus, UserPlus, ShieldCheck, GraduationCap,
+    X, Calendar, Mail, ChevronRight, Inbox,
+    TypeIcon, Users
+} from 'lucide-react-native';
+import { LucideIcon } from 'lucide-react-native';
 
 // ─── Kolory ───────────────────────────────────────────────────────────────────
 const C = {
@@ -83,12 +90,21 @@ const EventCard = ({
     const dueLabel = formatDueDate(event.dueDate);
     const isPast = new Date(event.dueDate) < new Date();
 
+
     const typeLabels: Record<EventType, string> = {
         deadline: 'TERMIN',
         exam: 'EGZAMIN',
         event: 'WYDARZENIE',
         meeting: 'SPOTKANIE',
     };
+    const EVENT_ICONS: Record<EventType, LucideIcon> = {
+        deadline: ClipboardList,
+        exam:     BookOpen,
+        event:    Clapperboard,
+        meeting:  UsersRound,
+    };
+    const TypeIcon = EVENT_ICONS[event.type];
+
 
     return (
         <View style={[styles.eventCard, isPast && { opacity: 0.5 }]}>
@@ -96,14 +112,13 @@ const EventCard = ({
             <View style={styles.eventBody}>
                 <View style={styles.eventTop}>
                     <View style={styles.eventTypeRow}>
-                        <Text style={styles.eventIcon}>{getEventIcon(event.type)}</Text>
-                        <Text style={[styles.eventTypeLabel, { color: urgencyColor }]}>
+                        <TypeIcon size={14} color={urgencyColor} strokeWidth={2} />                        <Text style={[styles.eventTypeLabel, { color: urgencyColor }]}>
                             {typeLabels[event.type]}
                         </Text>
                     </View>
                     {canDelete && (
                         <TouchableOpacity onPress={onDelete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                            <Text style={styles.deleteBtn}>✕</Text>
+                            <Trash2 size={15} color={C.textDim} strokeWidth={2} />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -153,6 +168,11 @@ const MemberRow = ({
         starosta: 'Starosta',
         student: 'Student',
     };
+    const ROLE_ICONS: Record<UserRole, React.ReactElement> = {
+        admin:    <ShieldCheck   size={11} color={C.accent}        strokeWidth={2.5} />,
+        starosta: <Star          size={11} color={C.starostaColor} strokeWidth={2.5} fill={C.starostaColor} />,
+        student:  <GraduationCap size={11} color={C.textMuted}     strokeWidth={2} />,
+    };
 
     return (
         <View style={styles.memberRow}>
@@ -165,14 +185,17 @@ const MemberRow = ({
                 <Text style={styles.memberEmail} numberOfLines={1}>{member.email}</Text>
             </View>
             <View style={styles.memberRight}>
-                <Text style={[styles.memberRoleLabel, { color: roleColors[member.role] }]}>
-                    {roleLabels[member.role]}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    {ROLE_ICONS[member.role]}
+                    <Text style={[styles.memberRoleLabel, { color: roleColors[member.role] }]}>
+                        {roleLabels[member.role]}
+                    </Text>
+                </View>
                 {canManage && !isCurrentUser && member.role === 'student' && (
                     <View style={styles.memberActions}>
                         {!isStarostaSlotTaken && (
                             <TouchableOpacity style={styles.memberActionBtn} onPress={onPromoteToStarosta}>
-                                <Text style={styles.memberActionBtnText}>⭐ Starosta</Text>
+                                <Star size={10} color={C.starostaColor} strokeWidth={2} />
                             </TouchableOpacity>
                         )}
                         <TouchableOpacity
@@ -575,17 +598,23 @@ export default function GroupDetailScreen({ route }: any) {
                     style={[styles.tab, activeTab === 'events' && styles.tabActive]}
                     onPress={() => setActiveTab('events')}
                 >
-                    <Text style={[styles.tabText, activeTab === 'events' && styles.tabTextActive]}>
-                        📅 Wydarzenia ({group.events.length})
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                        <Calendar size={14} color={activeTab === 'events' ? C.accent : C.textMuted} strokeWidth={2} />
+                        <Text style={[styles.tabText, activeTab === 'events' && styles.tabTextActive]}>
+                            Wydarzenia ({group.events.length})
+                        </Text>
+                    </View>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.tab, activeTab === 'members' && styles.tabActive]}
                     onPress={() => setActiveTab('members')}
                 >
-                    <Text style={[styles.tabText, activeTab === 'members' && styles.tabTextActive]}>
-                        👥 Członkowie ({group.members.length})
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                        <Users size={14} color={activeTab === 'members' ? C.accent : C.textMuted} strokeWidth={2} />
+                        <Text style={[styles.tabText, activeTab === 'members' && styles.tabTextActive]}>
+                            Członkowie ({group.members.length})
+                        </Text>
+                    </View>
                 </TouchableOpacity>
             </View>
 
@@ -618,8 +647,7 @@ export default function GroupDetailScreen({ route }: any) {
                         showsVerticalScrollIndicator={false}
                         ListEmptyComponent={
                             <View style={styles.empty}>
-                                <Text style={styles.emptyIcon}>📭</Text>
-                                <Text style={styles.emptyText}>Brak wydarzeń</Text>
+                                <Inbox size={44} color={C.textDim} strokeWidth={1.2} style={{ marginBottom: 10 }} />                                <Text style={styles.emptyText}>Brak wydarzeń</Text>
                                 {iCanCreateEvents && (
                                     <Text style={styles.emptySubtext}>Dodaj pierwsze wydarzenie przyciskiem poniżej.</Text>
                                 )}
@@ -640,7 +668,10 @@ export default function GroupDetailScreen({ route }: any) {
                             onPress={() => setShowAddEvent(true)}
                             activeOpacity={0.85}
                         >
-                            <Text style={styles.fabText}>+ Wydarzenie</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Plus size={18} color="#fff" strokeWidth={2.5} />
+                                <Text style={styles.fabText}>Wydarzenie</Text>
+                            </View>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -680,7 +711,10 @@ export default function GroupDetailScreen({ route }: any) {
                             onPress={() => setShowAddMember(true)}
                             activeOpacity={0.85}
                         >
-                            <Text style={styles.fabText}>+ Dodaj studenta</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <UserPlus size={18} color="#fff" strokeWidth={2} />
+                                <Text style={styles.fabText}>Dodaj studenta</Text>
+                            </View>
                         </TouchableOpacity>
                     )}
                 </View>

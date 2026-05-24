@@ -1,6 +1,6 @@
 // App.tsx
 import React from 'react';
-import {ActivityIndicator, Text, View } from 'react-native';
+import {ActivityIndicator, View } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -19,6 +19,7 @@ import GroupViewScreen from "./screens/GroupViewScreen";
 import { useAuth } from './contexts/AuthContext';
 import {AuthProvider} from "./contexts/AuthContext";
 import EmailConfirmedScreen from "./screens/auth_screens/EmailConfirmedScreen";
+import {Home,Users, Search, User} from 'lucide-react-native';
 
 export type RootStackParamList = {
     MainTabs: undefined;
@@ -74,7 +75,7 @@ const MainTabs = () => {
                 component={HomeScreen}
                 options={{
                     headerShown: false,
-                    tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🏠</Text>,
+                    tabBarIcon: ({ color, size }) => <Home color={color} size={size} strokeWidth={1.8} />,
                 }}
             />
             <Tab.Screen
@@ -83,8 +84,7 @@ const MainTabs = () => {
                 options={{
                     headerShown: false,
                     title: 'Grupy',
-                    tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>👥</Text>,
-                }}
+                    tabBarIcon: ({ color, size }) => <Users color={color} size={size} strokeWidth={1.8} />,                }}
             />
             <Tab.Screen
                 name="Search"
@@ -92,8 +92,7 @@ const MainTabs = () => {
                 options={{
                     headerShown: false,
                     title: 'Szukaj',
-                    tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🔍</Text>,
-                }}
+                    tabBarIcon: ({ color, size }) => <Search color={color} size={size} strokeWidth={1.8} />,                }}
             />
             <Tab.Screen
                 name="Profile"
@@ -101,8 +100,7 @@ const MainTabs = () => {
                 options={{
                     headerShown: false,
                     title: 'Profil',
-                    tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>👤</Text>,
-                }}
+                    tabBarIcon: ({ color, size }) => <User color={color} size={size} strokeWidth={1.8} />,                }}
             />
 
         </Tab.Navigator>
