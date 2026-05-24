@@ -199,14 +199,12 @@ function SimpleCalendar({
 }
 
 // ─── Główny komponent ─────────────────────────────────────────────────────────
-// FIX: useMemo było wywołane na poziomie modułu (poza komponentem) — przeniesione do środka
 export default function GroupDashboardScreen({ route }: any) {
     const groupId: string | undefined = route?.params?.groupId;
     const navigation = useNavigation<any>();
 
-    // FIX: dodane brakujące importy hooków
     const { user } = useAuth();
-    const { groups, addEvent } = useGroups(user?.id ?? null);
+    const { groups, addEvent, deleteEvent } = useGroups(user?.id ?? null);
 
     const currentGroup = groups.find(g => g.id === groupId);
 
@@ -279,7 +277,6 @@ export default function GroupDashboardScreen({ route }: any) {
         if (!trimmedTitle) return;
 
         if (editingEventId) {
-            // Edycja — tylko lokalnie (Supabase nie ma update events w hooku, dodaj gdy potrzeba)
             setLocalEdits(prev => {
                 const current = eventsMap[selectedDay] || [];
                 const updated = current.map(ev =>
@@ -290,7 +287,6 @@ export default function GroupDashboardScreen({ route }: any) {
                 return { ...prev, [selectedDay]: sortEvents(updated) };
             });
         } else {
-            // Nowy event — zapis do Supabase przez hook
             if (groupId) {
                 const date = new Date(selectedDay);
                 if (newTime.trim()) {
@@ -314,8 +310,8 @@ export default function GroupDashboardScreen({ route }: any) {
         setAddModalOpen(false);
     };
 
-    const handleDeleteEvent = (eventId: string) => {
-        // Usuń lokalnie z widoku (Supabase sync przy następnym fetch)
+    const handleDeleteEvent = async (eventId: string) => {
+        await deleteEvent(eventId);
         setLocalEdits(prev => {
             const current = eventsMap[selectedDay] || [];
             return {

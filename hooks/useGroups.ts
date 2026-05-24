@@ -69,13 +69,18 @@ export function useGroups(userId: string | null) {
     useEffect(() => { fetchGroups(); }, [fetchGroups]);
 
     const createGroup = async (name: string, desc: string, code: string) => {
-        if (!userId) return;
+        if (!userId){
+            console.log('CREATE GROUP: no userId')
+            return;
+        }
+        console.log('STARTING CREATEGROUP')
         const colors = ['#6C63FF','#FF6584','#43BCCD','#F9C74F','#90BE6D'];
         const color = colors[groups.length % colors.length];
         const { data: g, error: e } = await supabase
             .from('groups')
-            .insert({ name, description: desc, faculty_code: code, admin_id: userId, color })
+            .insert({ name, description: desc, faculty_code: code, admin_id: userId, color , created_by: userId})
             .select().single();
+        console.log('CREATE GROUP RESULT: ',{g,error: e});
         if (e || !g) { setError(e?.message ?? 'Błąd'); return; }
         const initials = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
         await supabase.from('group_members').insert({

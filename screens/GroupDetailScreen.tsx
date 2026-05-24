@@ -11,13 +11,12 @@ import {
     Alert,
     FlatList,
     Platform,
+    ActivityIndicator,
 } from 'react-native';
 import {
-    Group,
     GroupEvent,
     GroupMember,
     EventType,
-    CURRENT_USER,
     canManageGroup,
     canManageMembers,
     canCreateEvents,
@@ -27,6 +26,8 @@ import {
     getEventUrgencyColor,
     UserRole,
 } from './groupTypes';
+import {useAuth} from "../contexts/AuthContext";
+import {useGroups} from "../hooks/useGroups";
 
 // ─── Kolory ───────────────────────────────────────────────────────────────────
 const C = {
@@ -143,12 +144,12 @@ const MemberRow = ({
 }) => {
     const roleColors: Record<UserRole, string> = {
         admin: C.accent,
-        staroста: C.starostaColor,
+        starosta: C.starostaColor,
         student: C.textMuted,
     };
     const roleLabels: Record<UserRole, string> = {
         admin: 'Admin',
-        staroста: 'Starosta',
+        starosta: 'Starosta',
         student: 'Student',
     };
 
@@ -374,13 +375,11 @@ const AddMemberModal = ({
 };
 
 // ─── Główny ekran szczegółów grupy ────────────────────────────────────────────
-export default function GroupDetailScreen({ route, navigation }: any) {
-    const { groupId } = route.params as { groupId: string };
+export default function GroupDetailScreen({ route }: any) {
 
-    // W prawdziwej aplikacji stan pochodzi z kontekstu/store
-    // Tu dla uproszczenia trzymamy lokalnie
-    const [groups, setGroups] = useState<Group[]>(route.params.groups ?? []);
-    const group = groups.find(g => g.id === groupId)!;
+    const { groupId } = route.params;
+    const { user } = useAuth();
+    const { groups,loading, addEvent, deleteEvent, addMember, removeMember, promoteToStarosta } = useGroups(user?.id ?? null);    const group = groups.find(g => g.id === groupId);
 
     const [activeTab, setActiveTab] = useState<Tab>('events');
     const [eventFilter, setEventFilter] = useState<EventFilter>('all');
@@ -390,33 +389,23 @@ export default function GroupDetailScreen({ route, navigation }: any) {
     if (!group) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ color: C.text }}>Nie znaleziono grupy.</Text>
+                {loading
+                ? <ActivityIndicator color={C.accent} size="large" />
+                : <Text style={{ color: C.text }}>Nie znaleziono grupy.</Text>
+                }
             </View>
         );
     }
 
-    const myRole = getUserRoleInGroup(group, CURRENT_USER.id);
-    const iCanManage = canManageGroup(group, CURRENT_USER.id);
-    const iCanManageMembers = canManageMembers(group, CURRENT_USER.id);
-    const iCanCreateEvents = canCreateEvents(group, CURRENT_USER.id);
-    const hasStarosta = group.members.some(m => m.role === 'staroста');
-
-    const updateGroup = (updater: (g: Group) => Group) => {
-        setGroups(prev => prev.map(g => g.id === groupId ? updater(g) : g));
-    };
+    const myRole = getUserRoleInGroup(group, user?.id ?? '');
+    const iCanManage = canManageGroup(group, user?.id ?? '');
+    const iCanManageMembers = canManageMembers(group, user?.id ?? '');
+    const iCanCreateEvents = canCreateEvents(group, user?.id ?? '');
+    const hasStarosta = group.members.some(m => m.role === 'starosta');
 
     // ─── Event handlers ───
-    const handleAddEvent = (title: string, desc: string, type: EventType, dueDate: Date) => {
-        const ev: GroupEvent = {
-            id: `ev-${Date.now()}`,
-            title,
-            description: desc,
-            type,
-            dueDate: dueDate.toISOString(),
-            createdBy: CURRENT_USER.id,
-            groupId,
-        };
-        updateGroup(g => ({ ...g, events: [...g.events, ev] }));
+    const handleAddEvent = async (title: string, desc: string, type: EventType, dueDate: Date) => {
+        await addEvent(groupId, title, desc, type, dueDate);
     };
 
     const handleDeleteEvent = (evId: string) => {
@@ -424,25 +413,17 @@ export default function GroupDetailScreen({ route, navigation }: any) {
             { text: 'Anuluj', style: 'cancel' },
             {
                 text: 'Usuń', style: 'destructive',
-                onPress: () => updateGroup(g => ({ ...g, events: g.events.filter(e => e.id !== evId) })),
+                onPress: () => deleteEvent(evId),
             },
         ]);
     };
 
-    const handleAddMember = (name: string, email: string) => {
+    const handleAddMember = async (name: string, email: string) => {
         if (group.members.some(m => m.email === email)) {
             Alert.alert('Błąd', 'Ten użytkownik już należy do grupy.');
             return;
         }
-        const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-        const newMember: GroupMember = {
-            id: `user-${Date.now()}`,
-            name,
-            email,
-            role: 'student',
-            avatarInitials: initials,
-        };
-        updateGroup(g => ({ ...g, members: [...g.members, newMember] }));
+        await addMember(groupId, name, email);
     };
 
     const handlePromoteToStarosta = (memberId: string) => {
@@ -450,15 +431,8 @@ export default function GroupDetailScreen({ route, navigation }: any) {
             { text: 'Anuluj', style: 'cancel' },
             {
                 text: 'Mianuj', onPress: () => {
-                    updateGroup(g => ({
-                        ...g,
-                        starostaId: memberId,
-                        members: g.members.map(m => ({
-                            ...m,
-                            role: m.id === memberId ? 'staroста' : m.role === 'staroста' ? 'student' : m.role,
-                        })),
-                    }));
-                },
+                    promoteToStarosta(groupId, memberId)
+                }
             },
         ]);
     };
@@ -468,11 +442,7 @@ export default function GroupDetailScreen({ route, navigation }: any) {
             { text: 'Anuluj', style: 'cancel' },
             {
                 text: 'Usuń', style: 'destructive',
-                onPress: () => updateGroup(g => ({
-                    ...g,
-                    members: g.members.filter(m => m.id !== memberId),
-                    starostaId: g.starostaId === memberId ? null : g.starostaId,
-                })),
+                onPress: () => removeMember(groupId, memberId)
             },
         ]);
     };
@@ -505,16 +475,16 @@ export default function GroupDetailScreen({ route, navigation }: any) {
                     <View style={[
                         styles.myRolePill,
                         myRole === 'admin' ? { borderColor: C.accent } :
-                            myRole === 'staroста' ? { borderColor: C.starostaColor } :
+                            myRole === 'starosta' ? { borderColor: C.starostaColor } :
                                 { borderColor: C.border }
                     ]}>
                         <Text style={[
                             styles.myRoleText,
                             myRole === 'admin' ? { color: C.accent } :
-                                myRole === 'staroста' ? { color: C.starostaColor } :
+                                myRole === 'starosta' ? { color: C.starostaColor } :
                                     { color: C.textMuted }
                         ]}>
-                            {myRole === 'admin' ? '🛡 Admin' : myRole === 'staroста' ? '⭐ Starosta' : '🎓 Student'}
+                            {myRole === 'admin' ? '🛡 Admin' : myRole === 'starosta' ? '⭐ Starosta' : '🎓 Student'}
                         </Text>
                     </View>
                 )}
@@ -617,7 +587,7 @@ export default function GroupDetailScreen({ route, navigation }: any) {
                             <MemberRow
                                 member={member}
                                 canManage={iCanManageMembers}
-                                isCurrentUser={member.id === CURRENT_USER.id}
+                                isCurrentUser={member.id === user?.id}
                                 isStarostaSlotTaken={hasStarosta}
                                 onPromoteToStarosta={() => handlePromoteToStarosta(member.id)}
                                 onRemove={() => handleRemoveMember(member.id)}

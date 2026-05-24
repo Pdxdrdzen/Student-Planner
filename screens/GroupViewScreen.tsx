@@ -13,6 +13,7 @@ import {
     Platform,
 } from 'react-native';
 import {
+    GroupMember,
     canManageGroup,
     formatDueDate,
     getEventIcon,
@@ -158,6 +159,7 @@ const CreateGroupModal = ({
     const [code, setCode] = useState('');
 
     const handle = () => {
+        console.log('handle in modal called, name:', name, 'code:', code);
         if (!name.trim() || !code.trim()) {
             Alert.alert('Błąd', 'Nazwa i kod wydziałowy są wymagane.');
             return;
@@ -234,7 +236,10 @@ export default function GroupViewScreen({ navigation }: Props) {
     );
 
     const handleCreate = async (name: string, desc: string, code: string) => {
+        console.log('HandleCreate called');
+        console.log('User: ',user?.id);
         await createGroup(name, desc, code);
+        console.log('createGroup, groups: ',groups);
         Alert.alert('Sukces', `Grupa "${name}" została utworzona.`);
     };
 
