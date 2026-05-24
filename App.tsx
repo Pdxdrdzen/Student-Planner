@@ -27,6 +27,7 @@ export type RootStackParamList = {
     EmailConfirmed: undefined;
     ForgotPassword: undefined;
     GroupChat: undefined;
+    GroupDashboard:{groupId: string};
     GroupDetail: {
         groupId: string;
         groups: import('./screens/groupTypes').Group[];
@@ -35,7 +36,6 @@ export type RootStackParamList = {
 
 export type BottomTabParamList = {
     'Strona główna': undefined;
-    GroupDashboard: undefined;
     Search: undefined;
     Profile: undefined;
     GroupView:undefined;
@@ -78,19 +78,12 @@ const MainTabs = () => {
                 }}
             />
             <Tab.Screen
-                name="GroupDashboard"
-                component={GroupDashboardScreen}
-                options={{
-                    title: 'Grupy',
-                    tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>👥</Text>,
-                }}
-            />
-            <Tab.Screen
-                name="GroupView"
+                name="Grupy"
                 component={GroupViewScreen}
                 options={{
                     headerShown: false,
-                    tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🏠</Text>,
+                    title: 'Grupy',
+                    tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>👥</Text>,
                 }}
             />
             <Tab.Screen
@@ -169,6 +162,18 @@ return (
                     />
                     <Stack.Screen name="EmailConfirmed" component={EmailConfirmedScreen}
                                   options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                        name="GroupDashboard"
+                        component={GroupDashboardScreen}
+                        options={{
+                            headerShown: true,
+                            headerTitle: 'Kalendarz grupy',
+                            headerStyle: { backgroundColor: '#0f0f0f' },
+                            headerTintColor: '#fff',
+                            animation: 'slide_from_right',
+                            animationDuration: 280,
+                        }}
                     />
                 </>
             ):(<>

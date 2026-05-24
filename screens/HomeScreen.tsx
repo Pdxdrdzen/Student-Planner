@@ -186,7 +186,7 @@ const HomeScreen = ({ navigation }: Props) => {
                         </Animated.View>
 
                         <Animated.Text style={[styles.greeting, titleStyle]}>
-                            {greeting} 👋
+                            {greetingFull} 👋
                         </Animated.Text>
                         <Animated.Text style={[styles.heroTitle, titleStyle]}>
                             Organizuj naukę,{'\n'}działaj razem.
@@ -199,7 +199,7 @@ const HomeScreen = ({ navigation }: Props) => {
                         <Animated.View style={ctaStyle}>
                             <TouchableOpacity
                                 style={styles.ctaButton}
-                                onPress={() => navigation.navigate('GroupDashboard')}
+                                onPress={() => navigation.navigate('GroupView')}
                                 activeOpacity={0.85}
                             >
                                 <Text style={styles.ctaButtonText}>Przejdź do grup →</Text>

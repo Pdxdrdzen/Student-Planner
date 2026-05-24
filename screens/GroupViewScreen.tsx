@@ -8,30 +8,26 @@ import {
     TouchableOpacity,
     Modal,
     TextInput,
-    ScrollView,
     Alert,
     StatusBar,
     Platform,
 } from 'react-native';
 import {
-    Group,
-    GroupMember,
-    MOCK_GROUPS,
-    CURRENT_USER,
     canManageGroup,
-    getUserRoleInGroup,
     formatDueDate,
     getEventIcon,
     getEventUrgencyColor,
+    getUserRoleInGroup,
     UserRole,
-} from './groupTypes';
+    Group,
+} from '../screens/groupTypes';
+import { useAuth } from '../contexts/AuthContext';
+import { useGroups } from '../hooks/useGroups';
 
-// ─── Nawigacja ────────────────────────────────────────────────────────────────
 type Props = {
     navigation: any;
 };
 
-// ─── Kolory ───────────────────────────────────────────────────────────────────
 const C = {
     bg: '#0f0f0f',
     surface: '#1a1a1a',
@@ -50,10 +46,10 @@ const C = {
 
 // ─── Rola badge ───────────────────────────────────────────────────────────────
 const RoleBadge = ({ role }: { role: UserRole }) => {
-    const config = {
-        admin: { label: 'Admin', color: C.accent },
-        staroста: { label: 'Starosta', color: C.starostaColor },
-        student: { label: 'Student', color: C.textMuted },
+    const config: Record<UserRole, { label: string; color: string }> = {
+        admin:    { label: 'Admin',    color: C.accent },
+        starosta: { label: 'Starosta', color: C.starostaColor },
+        student:  { label: 'Student',  color: C.textMuted },
     };
     const { label, color } = config[role];
     return (
@@ -67,10 +63,12 @@ const RoleBadge = ({ role }: { role: UserRole }) => {
 const GroupCard = ({
                        group,
                        onPress,
+                       onCalendarPress,
                        userRole,
                    }: {
     group: Group;
     onPress: () => void;
+    onCalendarPress: () => void;  // FIX 2: Kalendarz jako osobny prop, nie wewnątrz map
     userRole: UserRole | null;
 }) => {
     const upcoming = group.events
@@ -78,7 +76,8 @@ const GroupCard = ({
         .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
         .slice(0, 2);
 
-    const starost = group.members.find(m => m.role === 'staroста');
+    // FIX 1: 'staroста' → 'starosta'
+    const starost = group.members.find(m => m.role === 'starosta');
 
     return (
         <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
@@ -131,6 +130,15 @@ const GroupCard = ({
                     ))}
                 </View>
             )}
+
+            {/* FIX 2: Przycisk kalendarza tutaj, w karcie — nie w map filtrów */}
+            <TouchableOpacity
+                style={styles.calendarBtn}
+                onPress={onCalendarPress}
+                activeOpacity={0.8}
+            >
+                <Text style={styles.calendarBtnText}>📅 Kalendarz</Text>
+            </TouchableOpacity>
         </TouchableOpacity>
     );
 };
@@ -212,41 +220,21 @@ const CreateGroupModal = ({
 
 // ─── Główny ekran ─────────────────────────────────────────────────────────────
 export default function GroupViewScreen({ navigation }: Props) {
-    const [groups, setGroups] = useState<Group[]>(MOCK_GROUPS);
+    const { user } = useAuth();
+    const { groups, loading, error, createGroup } = useGroups(user?.id ?? null);
+    const isAdmin = true;
     const [showCreate, setShowCreate] = useState(false);
     const [filter, setFilter] = useState<'all' | 'mine'>('all');
 
-    const isAdmin = CURRENT_USER.role === 'admin';
-
+    // FIX 3: user może być null — opcjonalne łańcuchowanie
     const visibleGroups = groups.filter(g =>
         filter === 'all'
             ? true
-            : g.members.some(m => m.id === CURRENT_USER.id)
+            : g.members.some((m: { id: string }) => m.id === user?.id)
     );
 
-    const handleCreate = (name: string, desc: string, code: string) => {
-        const COLORS = ['#6C63FF', '#FF6584', '#43BCCD', '#F9C74F', '#90BE6D'];
-        const newGroup: Group = {
-            id: `group-${Date.now()}`,
-            name,
-            description: desc,
-            facultyCode: code,
-            adminId: CURRENT_USER.id,
-            starostaId: null,
-            color: COLORS[groups.length % COLORS.length],
-            createdAt: new Date().toISOString(),
-            members: [
-                {
-                    id: CURRENT_USER.id,
-                    name: CURRENT_USER.name,
-                    email: CURRENT_USER.email,
-                    role: 'admin',
-                    avatarInitials: CURRENT_USER.name.split(' ').map(w => w[0]).join('').slice(0, 2),
-                },
-            ],
-            events: [],
-        };
-        setGroups(prev => [newGroup, ...prev]);
+    const handleCreate = async (name: string, desc: string, code: string) => {
+        await createGroup(name, desc, code);
         Alert.alert('Sukces', `Grupa "${name}" została utworzona.`);
     };
 
@@ -271,7 +259,7 @@ export default function GroupViewScreen({ navigation }: Props) {
                 )}
             </View>
 
-            {/* Filter tabs */}
+            {/* Filter tabs — FIX 2: tylko filtry, bez śmieciowego kodu kalendarza */}
             <View style={styles.filterRow}>
                 {(['all', 'mine'] as const).map(f => (
                     <TouchableOpacity
@@ -289,7 +277,7 @@ export default function GroupViewScreen({ navigation }: Props) {
             {/* Lista grup */}
             <FlatList
                 data={visibleGroups}
-                keyExtractor={g => g.id}
+                keyExtractor={(g: Group) => g.id}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
@@ -297,20 +285,22 @@ export default function GroupViewScreen({ navigation }: Props) {
                         <Text style={styles.emptyIcon}>👥</Text>
                         <Text style={styles.emptyText}>Brak grup</Text>
                         <Text style={styles.emptySubtext}>
-                            {isAdmin ? 'Utwórz pierwszą grupę przyciskiem powyżej.' : 'Poproś admina o dodanie do grupy.'}
+                            {isAdmin
+                                ? 'Utwórz pierwszą grupę przyciskiem powyżej.'
+                                : 'Poproś admina o dodanie do grupy.'}
                         </Text>
                     </View>
                 }
-                renderItem={({ item: group }) => (
+                renderItem={({ item: group }: { item: Group }) => (
+                    // FIX 4: setGroups usunięte — stan zarządzany przez useGroups hook
                     <GroupCard
                         group={group}
-                        userRole={getUserRoleInGroup(group, CURRENT_USER.id)}
+                        userRole={getUserRoleInGroup(group, user?.id ?? '')}
                         onPress={() =>
-                            navigation.navigate('GroupDetail', {
-                                groupId: group.id,
-                                groups,
-                                setGroups,
-                            })
+                            navigation.navigate('GroupDetail', { groupId: group.id })
+                        }
+                        onCalendarPress={() =>
+                            navigation.navigate('GroupDashboard', { groupId: group.id })
                         }
                     />
                 )}
@@ -327,10 +317,7 @@ export default function GroupViewScreen({ navigation }: Props) {
 
 // ─── Style ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: C.bg,
-    },
+    container: { flex: 1, backgroundColor: C.bg },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -340,258 +327,102 @@ const styles = StyleSheet.create({
         paddingBottom: 16,
     },
     headerSub: {
-        fontSize: 12,
-        color: C.textMuted,
-        letterSpacing: 1.5,
-        textTransform: 'uppercase',
-        marginBottom: 2,
+        fontSize: 12, color: C.textMuted,
+        letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2,
     },
     headerTitle: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: C.text,
-        letterSpacing: -0.5,
+        fontSize: 28, fontWeight: '700', color: C.text, letterSpacing: -0.5,
     },
     addBtn: {
-        backgroundColor: C.accent,
-        paddingHorizontal: 16,
-        paddingVertical: 9,
-        borderRadius: 20,
+        backgroundColor: C.accent, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20,
     },
-    addBtnText: {
-        color: '#fff',
-        fontWeight: '600',
-        fontSize: 14,
-    },
+    addBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
     filterRow: {
-        flexDirection: 'row',
-        paddingHorizontal: 20,
-        marginBottom: 12,
-        gap: 8,
+        flexDirection: 'row', paddingHorizontal: 20, marginBottom: 12, gap: 8,
     },
     filterTab: {
-        paddingHorizontal: 16,
-        paddingVertical: 7,
-        borderRadius: 20,
-        backgroundColor: C.surface,
-        borderWidth: 1,
-        borderColor: C.border,
+        paddingHorizontal: 16, paddingVertical: 7,
+        borderRadius: 20, backgroundColor: C.surface,
+        borderWidth: 1, borderColor: C.border,
     },
-    filterTabActive: {
-        backgroundColor: C.accentLight,
-        borderColor: C.accent,
-    },
-    filterTabText: {
-        color: C.textMuted,
-        fontSize: 13,
-        fontWeight: '500',
-    },
-    filterTabTextActive: {
-        color: C.accent,
-    },
-    listContent: {
-        paddingHorizontal: 16,
-        paddingBottom: 32,
-        gap: 12,
-    },
-    // Karta
+    filterTabActive: { backgroundColor: C.accentLight, borderColor: C.accent },
+    filterTabText: { color: C.textMuted, fontSize: 13, fontWeight: '500' },
+    filterTabTextActive: { color: C.accent },
+    listContent: { paddingHorizontal: 16, paddingBottom: 32, gap: 12 },
     card: {
-        backgroundColor: C.surface,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: C.border,
+        backgroundColor: C.surface, borderRadius: 16,
+        padding: 16, borderWidth: 1, borderColor: C.border,
     },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        marginBottom: 12,
-    },
-    colorDot: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-    },
-    cardTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: C.text,
-        letterSpacing: -0.3,
-    },
-    cardCode: {
-        fontSize: 12,
-        color: C.textMuted,
-        marginTop: 1,
-    },
-    badge: {
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 7,
-        paddingVertical: 3,
-    },
-    badgeText: {
-        fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 0.5,
-        textTransform: 'uppercase',
-    },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+    colorDot: { width: 12, height: 12, borderRadius: 6 },
+    cardTitle: { fontSize: 16, fontWeight: '700', color: C.text, letterSpacing: -0.3 },
+    cardCode: { fontSize: 12, color: C.textMuted, marginTop: 1 },
+    badge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
+    badgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
     cardStats: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: C.surface2,
-        borderRadius: 10,
-        padding: 10,
-        marginBottom: 12,
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: C.surface2, borderRadius: 10,
+        padding: 10, marginBottom: 12,
     },
-    statItem: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    statNum: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: C.text,
-    },
-    statLabel: {
-        fontSize: 10,
-        color: C.textMuted,
-        marginTop: 1,
-    },
-    statDivider: {
-        width: 1,
-        height: 28,
-        backgroundColor: C.border,
-    },
-    upcomingSection: {
-        gap: 6,
-    },
+    statItem: { flex: 1, alignItems: 'center' },
+    statNum: { fontSize: 16, fontWeight: '700', color: C.text },
+    statLabel: { fontSize: 10, color: C.textMuted, marginTop: 1 },
+    statDivider: { width: 1, height: 28, backgroundColor: C.border },
+    upcomingSection: { gap: 6 },
     upcomingLabel: {
-        fontSize: 11,
-        color: C.textMuted,
-        textTransform: 'uppercase',
-        letterSpacing: 0.8,
-        marginBottom: 2,
+        fontSize: 11, color: C.textMuted,
+        textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 2,
     },
-    upcomingItem: {
-        flexDirection: 'row',
+    upcomingItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    urgencyDot: { width: 6, height: 6, borderRadius: 3 },
+    upcomingIcon: { fontSize: 12 },
+    upcomingTitle: { flex: 1, fontSize: 13, color: C.text },
+    upcomingDate: { fontSize: 11, color: C.textMuted },
+    calendarBtn: {
+        marginTop: 10,
+        borderWidth: 1,
+        borderColor: C.accent + '55',
+        borderRadius: 10,
+        paddingVertical: 8,
         alignItems: 'center',
-        gap: 6,
+        backgroundColor: C.accentLight,
     },
-    urgencyDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-    },
-    upcomingIcon: {
-        fontSize: 12,
-    },
-    upcomingTitle: {
-        flex: 1,
-        fontSize: 13,
-        color: C.text,
-    },
-    upcomingDate: {
-        fontSize: 11,
-        color: C.textMuted,
-    },
-    // Empty
-    empty: {
-        alignItems: 'center',
-        paddingTop: 80,
-        paddingHorizontal: 40,
-    },
-    emptyIcon: {
-        fontSize: 48,
-        marginBottom: 12,
-    },
-    emptyText: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: C.text,
-        marginBottom: 6,
-    },
-    emptySubtext: {
-        fontSize: 14,
-        color: C.textMuted,
-        textAlign: 'center',
-        lineHeight: 20,
-    },
-    // Modal
+    calendarBtnText: { color: C.accent, fontSize: 13, fontWeight: '600' },
+    empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
+    emptyIcon: { fontSize: 48, marginBottom: 12 },
+    emptyText: { fontSize: 18, fontWeight: '700', color: C.text, marginBottom: 6 },
+    emptySubtext: { fontSize: 14, color: C.textMuted, textAlign: 'center', lineHeight: 20 },
     modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.7)',
-        justifyContent: 'flex-end',
+        flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end',
     },
     modalSheet: {
         backgroundColor: '#1c1c1c',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        padding: 24,
-        paddingBottom: 40,
+        borderTopLeftRadius: 24, borderTopRightRadius: 24,
+        padding: 24, paddingBottom: 40,
     },
     modalHandle: {
-        width: 40,
-        height: 4,
-        backgroundColor: C.border,
-        borderRadius: 2,
-        alignSelf: 'center',
-        marginBottom: 20,
+        width: 40, height: 4, backgroundColor: C.border,
+        borderRadius: 2, alignSelf: 'center', marginBottom: 20,
     },
-    modalTitle: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: C.text,
-        marginBottom: 20,
-    },
+    modalTitle: { fontSize: 22, fontWeight: '700', color: C.text, marginBottom: 20 },
     inputLabel: {
-        fontSize: 12,
-        color: C.textMuted,
-        textTransform: 'uppercase',
-        letterSpacing: 0.8,
-        marginBottom: 6,
+        fontSize: 12, color: C.textMuted,
+        textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6,
     },
     input: {
-        backgroundColor: C.surface2,
-        borderWidth: 1,
-        borderColor: C.border,
-        borderRadius: 12,
-        padding: 13,
-        color: C.text,
-        fontSize: 15,
-        marginBottom: 16,
+        backgroundColor: C.surface2, borderWidth: 1, borderColor: C.border,
+        borderRadius: 12, padding: 13, color: C.text, fontSize: 15, marginBottom: 16,
     },
-    inputMultiline: {
-        height: 80,
-        textAlignVertical: 'top',
-    },
-    modalButtons: {
-        flexDirection: 'row',
-        gap: 10,
-        marginTop: 4,
-    },
+    inputMultiline: { height: 80, textAlignVertical: 'top' },
+    modalButtons: { flexDirection: 'row', gap: 10, marginTop: 4 },
     btnCancel: {
-        flex: 1,
-        padding: 14,
-        borderRadius: 12,
-        backgroundColor: C.surface2,
-        alignItems: 'center',
+        flex: 1, padding: 14, borderRadius: 12,
+        backgroundColor: C.surface2, alignItems: 'center',
     },
-    btnCancelText: {
-        color: C.textMuted,
-        fontWeight: '600',
-        fontSize: 15,
-    },
+    btnCancelText: { color: C.textMuted, fontWeight: '600', fontSize: 15 },
     btnPrimary: {
-        flex: 2,
-        padding: 14,
-        borderRadius: 12,
-        backgroundColor: C.accent,
-        alignItems: 'center',
+        flex: 2, padding: 14, borderRadius: 12,
+        backgroundColor: C.accent, alignItems: 'center',
     },
-    btnPrimaryText: {
-        color: '#fff',
-        fontWeight: '700',
-        fontSize: 15,
-    },
+    btnPrimaryText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

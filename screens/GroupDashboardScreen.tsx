@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+// screens/GroupDashboardScreen.tsx
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -12,7 +13,10 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AnimatedBackground from '../components/AnimatedBackground';
+import { useAuth } from '../contexts/AuthContext';
+import { useGroups } from '../hooks/useGroups';
 
+// ─── Typy ─────────────────────────────────────────────────────────────────────
 type EventType = 'normal' | 'priority';
 
 type EventItem = {
@@ -22,16 +26,7 @@ type EventItem = {
     time?: string;
 };
 
-const INITIAL_EVENTS: Record<string, EventItem[]> = {
-    '2026-04-13': [
-        { id: '1', title: 'Spotkanie projektowe', type: 'priority', time: '18:00' },
-        { id: '2', title: 'Przegląd sprintu', type: 'normal', time: '20:00' },
-    ],
-    '2026-04-15': [
-        { id: '3', title: 'Oddanie makiet', type: 'priority', time: '23:59' },
-    ],
-};
-
+// ─── Pomocnicze funkcje ───────────────────────────────────────────────────────
 function getEventColors(type: EventType) {
     if (type === 'priority') {
         return {
@@ -43,7 +38,6 @@ function getEventColors(type: EventType) {
             tape: '#FFD0D5',
         };
     }
-
     return {
         solid: '#4DA3FF',
         soft: '#4DA3FF22',
@@ -66,12 +60,10 @@ function getMonthMatrix(year: number, month: number) {
     const firstDay = new Date(year, month, 1);
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const startOffset = (firstDay.getDay() + 6) % 7;
-
     const cells: (number | null)[] = [];
     for (let i = 0; i < startOffset; i++) cells.push(null);
     for (let day = 1; day <= daysInMonth; day++) cells.push(day);
     while (cells.length % 7 !== 0) cells.push(null);
-
     return cells;
 }
 
@@ -88,6 +80,7 @@ function formatSelectedDate(dateKey: string) {
     });
 }
 
+// ─── Komponent kalendarza ─────────────────────────────────────────────────────
 function SimpleCalendar({
                             selectedDay,
                             onSelectDay,
@@ -120,9 +113,7 @@ function SimpleCalendar({
 
             <View style={calendarStyles.row}>
                 {['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'].map((d) => (
-                    <Text key={d} style={calendarStyles.dayLabel}>
-                        {d}
-                    </Text>
+                    <Text key={d} style={calendarStyles.dayLabel}>{d}</Text>
                 ))}
             </View>
 
@@ -161,7 +152,6 @@ function SimpleCalendar({
                                 {events.map((event, eventIndex) => {
                                     const colors = getEventColors(event.type);
                                     const isPriority = event.type === 'priority';
-
                                     return (
                                         <View
                                             key={event.id}
@@ -194,8 +184,7 @@ function SimpleCalendar({
                                                     { color: colors.stickyText },
                                                 ]}
                                             >
-                                                {isPriority ? '! ' : ''}
-                                                {event.title}
+                                                {isPriority ? '! ' : ''}{event.title}
                                             </Text>
                                         </View>
                                     );
@@ -209,8 +198,17 @@ function SimpleCalendar({
     );
 }
 
-export default function GroupDashboardScreen() {
+// ─── Główny komponent ─────────────────────────────────────────────────────────
+// FIX: useMemo było wywołane na poziomie modułu (poza komponentem) — przeniesione do środka
+export default function GroupDashboardScreen({ route }: any) {
+    const groupId: string | undefined = route?.params?.groupId;
     const navigation = useNavigation<any>();
+
+    // FIX: dodane brakujące importy hooków
+    const { user } = useAuth();
+    const { groups, addEvent } = useGroups(user?.id ?? null);
+
+    const currentGroup = groups.find(g => g.id === groupId);
 
     const today = new Date();
     const todayKey = formatDateKey(
@@ -220,14 +218,43 @@ export default function GroupDashboardScreen() {
     );
 
     const [selectedDay, setSelectedDay] = useState(todayKey);
-    const [eventsMap, setEventsMap] = useState<Record<string, EventItem[]>>(INITIAL_EVENTS);
-
     const [addModalOpen, setAddModalOpen] = useState(false);
     const [editingEventId, setEditingEventId] = useState<string | null>(null);
-
     const [newTitle, setNewTitle] = useState('');
     const [newTime, setNewTime] = useState('');
     const [newType, setNewType] = useState<EventType>('normal');
+
+    // FIX: useMemo teraz wewnątrz komponentu — wcześniej był na poziomie modułu (błąd Rules of Hooks)
+    const supabaseEventsMap = useMemo<Record<string, EventItem[]>>(() => {
+        if (!currentGroup) return {};
+        const map: Record<string, EventItem[]> = {};
+        currentGroup.events.forEach(ev => {
+            const key = ev.dueDate.slice(0, 10);
+            if (!map[key]) map[key] = [];
+            map[key].push({
+                id: ev.id,
+                title: ev.title,
+                type: ev.type === 'deadline' || ev.type === 'exam' ? 'priority' : 'normal',
+                time: new Date(ev.dueDate).toLocaleTimeString('pl-PL', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                }),
+            });
+        });
+        return map;
+    }, [currentGroup]);
+
+    // FIX: lokalny eventsMap zsynchronizowany z Supabase + lokalne edycje
+    const [localEdits, setLocalEdits] = useState<Record<string, EventItem[]>>({});
+
+    // Scal dane z Supabase z lokalnymi edycjami (edycja/usunięcie zanim refetch)
+    const eventsMap: Record<string, EventItem[]> = useMemo(() => {
+        const merged: Record<string, EventItem[]> = { ...supabaseEventsMap };
+        Object.entries(localEdits).forEach(([key, items]) => {
+            merged[key] = items;
+        });
+        return merged;
+    }, [supabaseEventsMap, localEdits]);
 
     const selectedEvents = sortEvents(eventsMap[selectedDay] || []);
 
@@ -247,44 +274,37 @@ export default function GroupDashboardScreen() {
         setAddModalOpen(true);
     };
 
-    const handleSaveEvent = () => {
+    const handleSaveEvent = async () => {
         const trimmedTitle = newTitle.trim();
         if (!trimmedTitle) return;
 
         if (editingEventId) {
-            setEventsMap((prev) => {
-                const current = prev[selectedDay] || [];
-                const updated = current.map((event) =>
-                    event.id === editingEventId
-                        ? {
-                            ...event,
-                            title: trimmedTitle,
-                            time: newTime.trim() || undefined,
-                            type: newType,
-                        }
-                        : event,
+            // Edycja — tylko lokalnie (Supabase nie ma update events w hooku, dodaj gdy potrzeba)
+            setLocalEdits(prev => {
+                const current = eventsMap[selectedDay] || [];
+                const updated = current.map(ev =>
+                    ev.id === editingEventId
+                        ? { ...ev, title: trimmedTitle, time: newTime.trim() || undefined, type: newType }
+                        : ev,
                 );
-
-                return {
-                    ...prev,
-                    [selectedDay]: sortEvents(updated),
-                };
+                return { ...prev, [selectedDay]: sortEvents(updated) };
             });
         } else {
-            const newEvent: EventItem = {
-                id: Date.now().toString(),
-                title: trimmedTitle,
-                time: newTime.trim() || undefined,
-                type: newType,
-            };
-
-            setEventsMap((prev) => {
-                const current = prev[selectedDay] || [];
-                return {
-                    ...prev,
-                    [selectedDay]: sortEvents([...current, newEvent]),
-                };
-            });
+            // Nowy event — zapis do Supabase przez hook
+            if (groupId) {
+                const date = new Date(selectedDay);
+                if (newTime.trim()) {
+                    const [h, m] = newTime.trim().split(':');
+                    date.setHours(Number(h), Number(m));
+                }
+                await addEvent(
+                    groupId,
+                    trimmedTitle,
+                    '',
+                    newType === 'priority' ? 'deadline' : 'event',
+                    date,
+                );
+            }
         }
 
         setEditingEventId(null);
@@ -295,13 +315,12 @@ export default function GroupDashboardScreen() {
     };
 
     const handleDeleteEvent = (eventId: string) => {
-        setEventsMap((prev) => {
-            const current = prev[selectedDay] || [];
-            const filtered = current.filter((event) => event.id !== eventId);
-
+        // Usuń lokalnie z widoku (Supabase sync przy następnym fetch)
+        setLocalEdits(prev => {
+            const current = eventsMap[selectedDay] || [];
             return {
                 ...prev,
-                [selectedDay]: filtered,
+                [selectedDay]: current.filter(ev => ev.id !== eventId),
             };
         });
     };
@@ -320,8 +339,10 @@ export default function GroupDashboardScreen() {
                     <View style={styles.badge}>
                         <Text style={styles.badgeText}>✦ Panel grupy</Text>
                     </View>
-
-                    <Text style={styles.groupName}>Grupa projektowa</Text>
+                    {/* FIX: dynamiczna nazwa grupy zamiast hardkodowanej */}
+                    <Text style={styles.groupName}>
+                        {currentGroup?.name ?? 'Ładowanie...'}
+                    </Text>
                     <Text style={styles.groupSubtitle}>
                         Zarządzaj terminami, wydarzeniami i kontaktem zespołu w jednym miejscu.
                     </Text>
@@ -370,37 +391,19 @@ export default function GroupDashboardScreen() {
                     ) : (
                         selectedEvents.map((event) => {
                             const colors = getEventColors(event.type);
-
                             return (
                                 <View key={event.id} style={styles.eventCard}>
-                                    <View
-                                        style={[
-                                            styles.eventDot,
-                                            { backgroundColor: colors.solid },
-                                        ]}
-                                    />
+                                    <View style={[styles.eventDot, { backgroundColor: colors.solid }]} />
                                     <View style={styles.eventContent}>
                                         <View style={styles.eventTopRow}>
                                             <Text style={styles.eventTitle}>
-                                                {event.type === 'priority' ? '! ' : ''}
-                                                {event.title}
+                                                {event.type === 'priority' ? '! ' : ''}{event.title}
                                             </Text>
-
-                                            <View
-                                                style={[
-                                                    styles.eventTypeBadge,
-                                                    {
-                                                        backgroundColor: colors.soft,
-                                                        borderColor: colors.border,
-                                                    },
-                                                ]}
-                                            >
-                                                <Text
-                                                    style={[
-                                                        styles.eventTypeText,
-                                                        { color: colors.text },
-                                                    ]}
-                                                >
+                                            <View style={[
+                                                styles.eventTypeBadge,
+                                                { backgroundColor: colors.soft, borderColor: colors.border },
+                                            ]}>
+                                                <Text style={[styles.eventTypeText, { color: colors.text }]}>
                                                     {event.type === 'priority' ? 'Priorytet' : 'Zwykłe'}
                                                 </Text>
                                             </View>
@@ -418,21 +421,12 @@ export default function GroupDashboardScreen() {
                                             >
                                                 <Text style={styles.eventActionText}>Edytuj</Text>
                                             </TouchableOpacity>
-
                                             <TouchableOpacity
-                                                style={[
-                                                    styles.eventActionButton,
-                                                    styles.eventActionDelete,
-                                                ]}
+                                                style={[styles.eventActionButton, styles.eventActionDelete]}
                                                 onPress={() => handleDeleteEvent(event.id)}
                                                 activeOpacity={0.85}
                                             >
-                                                <Text
-                                                    style={[
-                                                        styles.eventActionText,
-                                                        styles.eventActionDeleteText,
-                                                    ]}
-                                                >
+                                                <Text style={[styles.eventActionText, styles.eventActionDeleteText]}>
                                                     Usuń
                                                 </Text>
                                             </TouchableOpacity>
@@ -473,10 +467,7 @@ export default function GroupDashboardScreen() {
                             <Text style={styles.modalTitle}>
                                 {editingEventId ? 'Edytuj wydarzenie' : 'Dodaj wydarzenie'}
                             </Text>
-                            <TouchableOpacity
-                                onPress={() => setAddModalOpen(false)}
-                                activeOpacity={0.8}
-                            >
+                            <TouchableOpacity onPress={() => setAddModalOpen(false)} activeOpacity={0.8}>
                                 <Text style={styles.modalClose}>Zamknij</Text>
                             </TouchableOpacity>
                         </View>
@@ -502,37 +493,20 @@ export default function GroupDashboardScreen() {
                         <Text style={styles.inputLabel}>Typ wydarzenia</Text>
                         <View style={styles.typeRow}>
                             <TouchableOpacity
-                                style={[
-                                    styles.typeButton,
-                                    newType === 'normal' && styles.typeButtonActiveBlue,
-                                ]}
+                                style={[styles.typeButton, newType === 'normal' && styles.typeButtonActiveBlue]}
                                 onPress={() => setNewType('normal')}
                                 activeOpacity={0.85}
                             >
-                                <Text
-                                    style={[
-                                        styles.typeButtonText,
-                                        newType === 'normal' && styles.typeButtonTextActive,
-                                    ]}
-                                >
+                                <Text style={[styles.typeButtonText, newType === 'normal' && styles.typeButtonTextActive]}>
                                     Niebieskie zwykłe
                                 </Text>
                             </TouchableOpacity>
-
                             <TouchableOpacity
-                                style={[
-                                    styles.typeButton,
-                                    newType === 'priority' && styles.typeButtonActiveRed,
-                                ]}
+                                style={[styles.typeButton, newType === 'priority' && styles.typeButtonActiveRed]}
                                 onPress={() => setNewType('priority')}
                                 activeOpacity={0.85}
                             >
-                                <Text
-                                    style={[
-                                        styles.typeButtonText,
-                                        newType === 'priority' && styles.typeButtonTextActive,
-                                    ]}
-                                >
+                                <Text style={[styles.typeButtonText, newType === 'priority' && styles.typeButtonTextActive]}>
                                     Czerwone priorytetowe
                                 </Text>
                             </TouchableOpacity>
@@ -554,6 +528,7 @@ export default function GroupDashboardScreen() {
     );
 }
 
+// ─── Style kalendarza ─────────────────────────────────────────────────────────
 const calendarStyles = StyleSheet.create({
     wrapper: {
         backgroundColor: '#161616',
@@ -569,12 +544,7 @@ const calendarStyles = StyleSheet.create({
         justifyContent: 'space-between',
         marginBottom: 14,
     },
-    monthTitle: {
-        color: '#eee',
-        fontSize: 16,
-        fontWeight: '700',
-        textTransform: 'capitalize',
-    },
+    monthTitle: { color: '#eee', fontSize: 16, fontWeight: '700', textTransform: 'capitalize' },
     monthBadge: {
         backgroundColor: '#6C63FF1A',
         borderRadius: 99,
@@ -583,65 +553,17 @@ const calendarStyles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 5,
     },
-    monthBadgeText: {
-        color: '#9D97FF',
-        fontSize: 11,
-        fontWeight: '600',
-    },
-    row: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 8,
-    },
-    dayLabel: {
-        width: '14.28%',
-        textAlign: 'center',
-        fontSize: 12,
-        color: '#666',
-        fontWeight: '600',
-    },
-    grid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    cell: {
-        width: '14.28%',
-        minHeight: 92,
-        alignItems: 'center',
-        paddingTop: 8,
-        paddingHorizontal: 2,
-        borderRadius: 12,
-    },
-    dayNum: {
-        fontSize: 15,
-        color: '#ddd',
-        marginBottom: 6,
-        fontWeight: '500',
-    },
-    selected: {
-        backgroundColor: '#6C63FF22',
-        borderWidth: 1,
-        borderColor: '#6C63FF44',
-    },
-    selectedText: {
-        color: '#fff',
-        fontWeight: '700',
-    },
-    today: {
-        borderWidth: 1,
-        borderColor: '#343434',
-        backgroundColor: '#191919',
-    },
-    todayText: {
-        color: '#9D97FF',
-        fontWeight: '700',
-    },
-    stickyContainer: {
-        width: '100%',
-        height: 52,
-        position: 'relative',
-        marginTop: 4,
-    },
+    monthBadgeText: { color: '#9D97FF', fontSize: 11, fontWeight: '600' },
+    row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+    dayLabel: { width: '14.28%', textAlign: 'center', fontSize: 12, color: '#666', fontWeight: '600' },
+    grid: { flexDirection: 'row', flexWrap: 'wrap' },
+    cell: { width: '14.28%', minHeight: 92, alignItems: 'center', paddingTop: 8, paddingHorizontal: 2, borderRadius: 12 },
+    dayNum: { fontSize: 15, color: '#ddd', marginBottom: 6, fontWeight: '500' },
+    selected: { backgroundColor: '#6C63FF22', borderWidth: 1, borderColor: '#6C63FF44' },
+    selectedText: { color: '#fff', fontWeight: '700' },
+    today: { borderWidth: 1, borderColor: '#343434', backgroundColor: '#191919' },
+    todayText: { color: '#9D97FF', fontWeight: '700' },
+    stickyContainer: { width: '100%', height: 52, position: 'relative', marginTop: 4 },
     eventSticky: {
         position: 'absolute',
         minHeight: 22,
@@ -657,48 +579,18 @@ const calendarStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         elevation: 3,
     },
-    stickyTop: {
-        left: 2,
-        right: 6,
-    },
-    stickyBottom: {
-        left: 7,
-        right: 2,
-    },
-    stickyTape: {
-        position: 'absolute',
-        top: 1,
-        alignSelf: 'center',
-        width: 18,
-        height: 5,
-        borderRadius: 2,
-        opacity: 0.92,
-    },
-    eventStickyText: {
-        fontSize: 8,
-        fontWeight: '800',
-        letterSpacing: 0.1,
-    },
+    stickyTop: { left: 2, right: 6 },
+    stickyBottom: { left: 7, right: 2 },
+    stickyTape: { position: 'absolute', top: 1, alignSelf: 'center', width: 18, height: 5, borderRadius: 2, opacity: 0.92 },
+    eventStickyText: { fontSize: 8, fontWeight: '800', letterSpacing: 0.1 },
 });
 
+// ─── Style główne ─────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#0f0f0f',
-    },
-    container: {
-        flex: 1,
-    },
-    contentContainer: {
-        paddingHorizontal: 16,
-        paddingTop: 18,
-        paddingBottom: 140,
-    },
-    heroBlock: {
-        paddingHorizontal: 8,
-        paddingTop: 6,
-        paddingBottom: 18,
-    },
+    safeArea: { flex: 1, backgroundColor: '#0f0f0f' },
+    container: { flex: 1 },
+    contentContainer: { paddingHorizontal: 16, paddingTop: 18, paddingBottom: 140 },
+    heroBlock: { paddingHorizontal: 8, paddingTop: 6, paddingBottom: 18 },
     badge: {
         alignSelf: 'flex-start',
         backgroundColor: '#6C63FF1A',
@@ -709,297 +601,55 @@ const styles = StyleSheet.create({
         paddingVertical: 5,
         marginBottom: 14,
     },
-    badgeText: {
-        color: '#9D97FF',
-        fontSize: 12,
-        fontWeight: '600',
-        letterSpacing: 0.5,
-    },
-    groupName: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: '#fff',
-        marginBottom: 8,
-        letterSpacing: -0.6,
-    },
-    groupSubtitle: {
-        fontSize: 14,
-        color: '#666',
-        lineHeight: 21,
-        maxWidth: '92%',
-    },
+    badgeText: { color: '#9D97FF', fontSize: 12, fontWeight: '600', letterSpacing: 0.5 },
+    groupName: { fontSize: 28, fontWeight: '700', color: '#fff', marginBottom: 8, letterSpacing: -0.6 },
+    groupSubtitle: { fontSize: 14, color: '#666', lineHeight: 21, maxWidth: '92%' },
     sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 8,
-        marginBottom: 6,
-        marginTop: 4,
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        paddingHorizontal: 8, marginBottom: 6, marginTop: 4,
     },
-    sectionTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#555',
-        letterSpacing: 1,
-        textTransform: 'uppercase',
-    },
-    sectionLink: {
-        fontSize: 13,
-        color: '#9D97FF',
-        fontWeight: '600',
-    },
-    selectedDayCard: {
-        marginTop: 14,
-        backgroundColor: '#141414',
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#242424',
-        padding: 14,
-    },
-    selectedDayLabel: {
-        color: '#666',
-        fontSize: 12,
-        marginBottom: 4,
-        textTransform: 'uppercase',
-        letterSpacing: 0.8,
-    },
-    selectedDayValue: {
-        color: '#eee',
-        fontSize: 16,
-        fontWeight: '600',
-        textTransform: 'capitalize',
-    },
-    eventsSection: {
-        marginTop: 16,
-    },
-    subsectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 8,
-        marginBottom: 10,
-    },
-    subsectionTitle: {
-        color: '#ddd',
-        fontSize: 15,
-        fontWeight: '600',
-    },
-    subsectionMeta: {
-        color: '#666',
-        fontSize: 12,
-    },
-    emptyCard: {
-        backgroundColor: '#141414',
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#242424',
-        padding: 16,
-    },
-    emptyTitle: {
-        color: '#ddd',
-        fontSize: 15,
-        fontWeight: '600',
-        marginBottom: 4,
-    },
-    emptyDescription: {
-        color: '#666',
-        fontSize: 13,
-        lineHeight: 20,
-    },
-    eventCard: {
-        backgroundColor: '#141414',
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#242424',
-        padding: 14,
-        marginBottom: 10,
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-    },
-    eventDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 99,
-        marginTop: 6,
-        marginRight: 12,
-    },
-    eventContent: {
-        flex: 1,
-    },
-    eventTopRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 8,
-        marginBottom: 6,
-    },
-    eventTitle: {
-        flex: 1,
-        color: '#eee',
-        fontSize: 15,
-        fontWeight: '600',
-    },
-    eventTypeBadge: {
-        borderRadius: 99,
-        borderWidth: 1,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-    },
-    eventTypeText: {
-        fontSize: 11,
-        fontWeight: '600',
-    },
-    eventMeta: {
-        color: '#666',
-        fontSize: 13,
-        marginBottom: 10,
-    },
-    eventActionsRow: {
-        flexDirection: 'row',
-        gap: 10,
-    },
-    eventActionButton: {
-        backgroundColor: '#101010',
-        borderWidth: 1,
-        borderColor: '#2b2b2b',
-        borderRadius: 12,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-    },
-    eventActionText: {
-        color: '#bbb',
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    eventActionDelete: {
-        borderColor: '#FF5A6B55',
-        backgroundColor: '#FF5A6B14',
-    },
-    eventActionDeleteText: {
-        color: '#FF9BA4',
-    },
-    chatFab: {
-        position: 'absolute',
-        bottom: 94,
-        right: 20,
-        backgroundColor: '#6C63FF',
-        width: 54,
-        height: 54,
-        borderRadius: 99,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#6C63FF',
-        shadowOpacity: 0.35,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 6,
-    },
-    chatFabIcon: {
-        fontSize: 22,
-    },
-    addEventBar: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: '#6C63FF',
-        paddingVertical: 16,
-        alignItems: 'center',
-        borderTopWidth: 1,
-        borderTopColor: '#7E76FF',
-    },
-    addEventText: {
-        color: '#fff',
-        fontWeight: '700',
-        fontSize: 15,
-        letterSpacing: 0.2,
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.55)',
-        justifyContent: 'flex-end',
-    },
-    modalCard: {
-        backgroundColor: '#141414',
-        borderTopLeftRadius: 22,
-        borderTopRightRadius: 22,
-        borderWidth: 1,
-        borderColor: '#242424',
-        padding: 18,
-        paddingBottom: 28,
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 18,
-    },
-    modalTitle: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: '700',
-    },
-    modalClose: {
-        color: '#9D97FF',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    inputLabel: {
-        color: '#bbb',
-        fontSize: 13,
-        marginBottom: 8,
-        marginTop: 6,
-    },
-    input: {
-        backgroundColor: '#101010',
-        borderWidth: 1,
-        borderColor: '#242424',
-        borderRadius: 14,
-        paddingHorizontal: 14,
-        paddingVertical: 13,
-        color: '#fff',
-        fontSize: 14,
-        marginBottom: 8,
-    },
-    typeRow: {
-        gap: 10,
-        marginTop: 4,
-        marginBottom: 18,
-    },
-    typeButton: {
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#2b2b2b',
-        backgroundColor: '#101010',
-        paddingVertical: 13,
-        paddingHorizontal: 14,
-    },
-    typeButtonActiveBlue: {
-        backgroundColor: '#4DA3FF22',
-        borderColor: '#4DA3FF55',
-    },
-    typeButtonActiveRed: {
-        backgroundColor: '#FF5A6B22',
-        borderColor: '#FF5A6B55',
-    },
-    typeButtonText: {
-        color: '#bbb',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    typeButtonTextActive: {
-        color: '#fff',
-    },
-    submitButton: {
-        backgroundColor: '#6C63FF',
-        borderRadius: 14,
-        paddingVertical: 14,
-        alignItems: 'center',
-        marginTop: 4,
-    },
-    submitButtonText: {
-        color: '#fff',
-        fontSize: 15,
-        fontWeight: '700',
-    },
+    sectionTitle: { fontSize: 13, fontWeight: '600', color: '#555', letterSpacing: 1, textTransform: 'uppercase' },
+    sectionLink: { fontSize: 13, color: '#9D97FF', fontWeight: '600' },
+    selectedDayCard: { marginTop: 14, backgroundColor: '#141414', borderRadius: 16, borderWidth: 1, borderColor: '#242424', padding: 14 },
+    selectedDayLabel: { color: '#666', fontSize: 12, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.8 },
+    selectedDayValue: { color: '#eee', fontSize: 16, fontWeight: '600', textTransform: 'capitalize' },
+    eventsSection: { marginTop: 16 },
+    subsectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 8, marginBottom: 10 },
+    subsectionTitle: { color: '#ddd', fontSize: 15, fontWeight: '600' },
+    subsectionMeta: { color: '#666', fontSize: 12 },
+    emptyCard: { backgroundColor: '#141414', borderRadius: 16, borderWidth: 1, borderColor: '#242424', padding: 16 },
+    emptyTitle: { color: '#ddd', fontSize: 15, fontWeight: '600', marginBottom: 4 },
+    emptyDescription: { color: '#666', fontSize: 13, lineHeight: 20 },
+    eventCard: { backgroundColor: '#141414', borderRadius: 16, borderWidth: 1, borderColor: '#242424', padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'flex-start' },
+    eventDot: { width: 10, height: 10, borderRadius: 99, marginTop: 6, marginRight: 12 },
+    eventContent: { flex: 1 },
+    eventTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 },
+    eventTitle: { flex: 1, color: '#eee', fontSize: 15, fontWeight: '600' },
+    eventTypeBadge: { borderRadius: 99, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
+    eventTypeText: { fontSize: 11, fontWeight: '600' },
+    eventMeta: { color: '#666', fontSize: 13, marginBottom: 10 },
+    eventActionsRow: { flexDirection: 'row', gap: 10 },
+    eventActionButton: { backgroundColor: '#101010', borderWidth: 1, borderColor: '#2b2b2b', borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12 },
+    eventActionText: { color: '#bbb', fontSize: 13, fontWeight: '600' },
+    eventActionDelete: { borderColor: '#FF5A6B55', backgroundColor: '#FF5A6B14' },
+    eventActionDeleteText: { color: '#FF9BA4' },
+    chatFab: { position: 'absolute', bottom: 94, right: 20, backgroundColor: '#6C63FF', width: 54, height: 54, borderRadius: 99, alignItems: 'center', justifyContent: 'center', shadowColor: '#6C63FF', shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+    chatFabIcon: { fontSize: 22 },
+    addEventBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#6C63FF', paddingVertical: 16, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#7E76FF' },
+    addEventText: { color: '#fff', fontWeight: '700', fontSize: 15, letterSpacing: 0.2 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+    modalCard: { backgroundColor: '#141414', borderTopLeftRadius: 22, borderTopRightRadius: 22, borderWidth: 1, borderColor: '#242424', padding: 18, paddingBottom: 28 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
+    modalTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+    modalClose: { color: '#9D97FF', fontSize: 14, fontWeight: '600' },
+    inputLabel: { color: '#bbb', fontSize: 13, marginBottom: 8, marginTop: 6 },
+    input: { backgroundColor: '#101010', borderWidth: 1, borderColor: '#242424', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 13, color: '#fff', fontSize: 14, marginBottom: 8 },
+    typeRow: { gap: 10, marginTop: 4, marginBottom: 18 },
+    typeButton: { borderRadius: 14, borderWidth: 1, borderColor: '#2b2b2b', backgroundColor: '#101010', paddingVertical: 13, paddingHorizontal: 14 },
+    typeButtonActiveBlue: { backgroundColor: '#4DA3FF22', borderColor: '#4DA3FF55' },
+    typeButtonActiveRed: { backgroundColor: '#FF5A6B22', borderColor: '#FF5A6B55' },
+    typeButtonText: { color: '#bbb', fontSize: 14, fontWeight: '600' },
+    typeButtonTextActive: { color: '#fff' },
+    submitButton: { backgroundColor: '#6C63FF', borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+    submitButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });
