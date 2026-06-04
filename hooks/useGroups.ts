@@ -41,11 +41,12 @@ export function useGroups(userId: string | null) {
                         isPublic: g.is_public??false,
                         createdAt: g.created_at,
                         members: (members ?? []).map(m => ({
-                            id: m.user_id,
+                            id: m.id,
+                            userId: m.user_id ?? null,
                             name: m.name,
                             email: m.email,
                             role: m.role,
-                            avatarInitials: m.avatar_initials ?? m.name.slice(0,2).toUpperCase(),
+                            avatarInitials: m.avatar_initials ?? m.name.slice(0, 2).toUpperCase(),
                         })),
                         events: (events ?? []).map(e => ({
                             id: e.id,

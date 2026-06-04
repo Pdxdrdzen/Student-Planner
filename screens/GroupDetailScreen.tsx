@@ -112,7 +112,8 @@ const EventCard = ({
             <View style={styles.eventBody}>
                 <View style={styles.eventTop}>
                     <View style={styles.eventTypeRow}>
-                        <TypeIcon size={14} color={urgencyColor} strokeWidth={2} />                        <Text style={[styles.eventTypeLabel, { color: urgencyColor }]}>
+                        <TypeIcon size={14} color={urgencyColor} strokeWidth={2} />
+                        <Text style={[styles.eventTypeLabel, { color: urgencyColor }]}>
                             {typeLabels[event.type]}
                         </Text>
                     </View>
@@ -642,12 +643,12 @@ export default function GroupDetailScreen({ route }: any) {
 
                     <FlatList
                         data={filteredEvents}
-                        keyExtractor={e => e.id}
-                        contentContainerStyle={styles.listContent}
+                        keyExtractor={(m, index) => m.id?.toString() ?? `member-${index}`}                        contentContainerStyle={styles.listContent}
                         showsVerticalScrollIndicator={false}
                         ListEmptyComponent={
                             <View style={styles.empty}>
-                                <Inbox size={44} color={C.textDim} strokeWidth={1.2} style={{ marginBottom: 10 }} />                                <Text style={styles.emptyText}>Brak wydarzeń</Text>
+                                <Inbox size={44} color={C.textDim} strokeWidth={1.2} style={{ marginBottom: 10 }} />
+                                <Text style={styles.emptyText}>Brak wydarzeń</Text>
                                 {iCanCreateEvents && (
                                     <Text style={styles.emptySubtext}>Dodaj pierwsze wydarzenie przyciskiem poniżej.</Text>
                                 )}
@@ -697,7 +698,7 @@ export default function GroupDetailScreen({ route }: any) {
                             <MemberRow
                                 member={member}
                                 canManage={iCanManageMembers}
-                                isCurrentUser={member.id === user?.id}
+                                isCurrentUser={member.userId === user?.id}
                                 isStarostaSlotTaken={hasStarosta}
                                 onPromoteToStarosta={() => handlePromoteToStarosta(member.id)}
                                 onRemove={() => handleRemoveMember(member.id)}

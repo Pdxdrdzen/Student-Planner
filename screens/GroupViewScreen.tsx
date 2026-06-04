@@ -305,7 +305,8 @@ export default function GroupViewScreen({ navigation }: Props) {
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                     <View style={styles.empty}>
-                        <Users size={52} color={C.textDim} strokeWidth={1.2} style={{ marginBottom: 12 }} />                        <Text style={styles.emptyText}>Brak grup</Text>
+                        <Users size={52} color={C.textDim} strokeWidth={1.2} style={{ marginBottom: 12 }} />
+                        <Text style={styles.emptyText}>Brak grup</Text>
                         <Text style={styles.emptySubtext}>
                             {isAdmin
                                 ? 'Utwórz pierwszą grupę przyciskiem powyżej.'

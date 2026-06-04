@@ -15,6 +15,7 @@ export interface GroupEvent {
 
 export interface GroupMember {
     id: string;
+    userId?:string|null;
     name: string;
     email: string;
     role: UserRole;
