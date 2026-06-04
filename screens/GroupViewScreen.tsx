@@ -1,19 +1,12 @@
 // screens/GroupViewScreen.tsx
 import React, { useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    FlatList,
-    TouchableOpacity,
-    Modal,
-    TextInput,
-    Alert,
-    StatusBar,
-    Platform,
+    View, Text, StyleSheet, FlatList, TouchableOpacity,
+    Modal, TextInput, Alert, StatusBar, Platform,
+    KeyboardAvoidingView, TouchableWithoutFeedback,
+    Keyboard, ScrollView,
 } from 'react-native';
 import {
-    GroupMember,
     canManageGroup,
     formatDueDate,
     getEventIcon,
@@ -24,8 +17,7 @@ import {
 } from '../screens/groupTypes';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroups } from '../hooks/useGroups';
-import { Users, Calendar, Plus, Star, ShieldCheck, GraduationCap, ChevronRight } from 'lucide-react-native';
-import { ClipboardList, BookOpen, Clapperboard, UsersRound } from 'lucide-react-native';
+import { Users, Calendar, Plus, Star, ShieldCheck, GraduationCap,ClipboardList, BookOpen, Clapperboard, UsersRound, Lock, Globe } from 'lucide-react-native';
 
 type Props = {
     navigation: any;
@@ -92,7 +84,6 @@ const GroupCard = ({
         .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
         .slice(0, 2);
 
-    // FIX 1: 'staroста' → 'starosta'
     const starost = group.members.find(m => m.role === 'starosta');
 
     return (
@@ -147,7 +138,6 @@ const GroupCard = ({
                 </View>
             )}
 
-            {/* FIX 2: Przycisk kalendarza tutaj, w karcie — nie w map filtrów */}
             <TouchableOpacity
                 style={styles.calendarBtn}
                 onPress={onCalendarPress}
@@ -170,70 +160,123 @@ const CreateGroupModal = ({
                           }: {
     visible: boolean;
     onClose: () => void;
-    onCreate: (name: string, desc: string, code: string) => void;
+    onCreate: (name: string, desc: string, code: string, isPublic: boolean) => void;
 }) => {
     const [name, setName] = useState('');
     const [desc, setDesc] = useState('');
     const [code, setCode] = useState('');
+    const [isPublic, setIsPublic] = useState(false);
 
     const handle = () => {
-        console.log('handle in modal called, name:', name, 'code:', code);
         if (!name.trim() || !code.trim()) {
             Alert.alert('Błąd', 'Nazwa i kod wydziałowy są wymagane.');
             return;
         }
-        onCreate(name.trim(), desc.trim(), code.trim());
-        setName(''); setDesc(''); setCode('');
+        onCreate(name.trim(), desc.trim(), code.trim(), isPublic);
+        setName(''); setDesc(''); setCode(''); setIsPublic(false);
         onClose();
     };
 
     return (
-        <Modal visible={visible} animationType="slide" transparent presentationStyle="overFullScreen">
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalSheet}>
-                    <View style={styles.modalHandle} />
-                    <Text style={styles.modalTitle}>Nowa Grupa</Text>
+        <Modal
+            visible={visible}
+            animationType="slide"
+            transparent
+            presentationStyle="overFullScreen"
+            onRequestClose={onClose}
+        >
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 18 : 0}
+            >
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                    <View style={styles.modalOverlay}>
+                        <ScrollView
+                            contentContainerStyle={styles.modalScrollContent}
+                            keyboardShouldPersistTaps="handled"
+                            showsVerticalScrollIndicator={false}
+                        >
+                            <View style={styles.modalSheet}>
+                                <View style={styles.modalHandle} />
+                                <Text style={styles.modalTitle}>Nowa Grupa</Text>
 
-                    <Text style={styles.inputLabel}>Nazwa grupy *</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="np. Informatyka 2024/2025"
-                        placeholderTextColor={C.textDim}
-                        value={name}
-                        onChangeText={setName}
-                    />
+                                <Text style={styles.inputLabel}>Nazwa grupy *</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="np. Informatyka 2024/2025"
+                                    placeholderTextColor={C.textDim}
+                                    value={name}
+                                    onChangeText={setName}
+                                    returnKeyType="next"
+                                />
 
-                    <Text style={styles.inputLabel}>Kod wydziałowy *</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="np. INF-2024"
-                        placeholderTextColor={C.textDim}
-                        value={code}
-                        onChangeText={setCode}
-                        autoCapitalize="characters"
-                    />
+                                <Text style={styles.inputLabel}>Kod wydziałowy *</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="np. INF-2024"
+                                    placeholderTextColor={C.textDim}
+                                    value={code}
+                                    onChangeText={setCode}
+                                    autoCapitalize="characters"
+                                    returnKeyType="next"
+                                />
 
-                    <Text style={styles.inputLabel}>Opis (opcjonalny)</Text>
-                    <TextInput
-                        style={[styles.input, styles.inputMultiline]}
-                        placeholder="Krótki opis grupy..."
-                        placeholderTextColor={C.textDim}
-                        value={desc}
-                        onChangeText={setDesc}
-                        multiline
-                        numberOfLines={3}
-                    />
+                                <Text style={styles.inputLabel}>Opis (opcjonalny)</Text>
+                                <TextInput
+                                    style={[styles.input, styles.inputMultiline]}
+                                    placeholder="Krótki opis grupy..."
+                                    placeholderTextColor={C.textDim}
+                                    value={desc}
+                                    onChangeText={setDesc}
+                                    multiline
+                                    numberOfLines={3}
+                                    textAlignVertical="top"
+                                    returnKeyType="done"
+                                />
 
-                    <View style={styles.modalButtons}>
-                        <TouchableOpacity style={styles.btnCancel} onPress={onClose}>
-                            <Text style={styles.btnCancelText}>Anuluj</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.btnPrimary} onPress={handle}>
-                            <Text style={styles.btnPrimaryText}>Utwórz</Text>
-                        </TouchableOpacity>
+                                {/* Widoczność grupy */}
+                                <Text style={styles.inputLabel}>Widoczność</Text>
+                                <View style={styles.visibilityRow}>
+                                    <TouchableOpacity
+                                        style={[styles.visibilityOption, !isPublic && styles.visibilityOptionActive]}
+                                        onPress={() => setIsPublic(false)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Lock size={22} color={!isPublic ? C.accent : C.textMuted} strokeWidth={2} />
+                                        <Text style={[styles.visibilityLabel, !isPublic && styles.visibilityLabelActive]}>
+                                            Prywatna
+                                        </Text>
+                                        <Text style={styles.visibilityDesc}>Tylko na zaproszenie</Text>
+                                    </TouchableOpacity>
+
+
+                                        <TouchableOpacity
+                                            style={[styles.visibilityOption, isPublic && styles.visibilityOptionActive]}
+                                            onPress={() => setIsPublic(true)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Globe size={22} color={isPublic ? C.accent : C.textMuted} strokeWidth={2} />
+                                            <Text style={[styles.visibilityLabel, isPublic && styles.visibilityLabelActive]}>
+                                                Publiczna
+                                            </Text>
+                                            <Text style={styles.visibilityDesc}>Widoczna dla wszystkich</Text>
+                                        </TouchableOpacity>
+                                </View>
+
+                                <View style={styles.modalButtons}>
+                                    <TouchableOpacity style={styles.btnCancel} onPress={onClose}>
+                                        <Text style={styles.btnCancelText}>Anuluj</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.btnPrimary} onPress={handle}>
+                                        <Text style={styles.btnPrimaryText}>Utwórz</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </ScrollView>
                     </View>
-                </View>
-            </View>
+                </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
         </Modal>
     );
 };
@@ -241,21 +284,19 @@ const CreateGroupModal = ({
 // ─── Główny ekran ─────────────────────────────────────────────────────────────
 export default function GroupViewScreen({ navigation }: Props) {
     const { user } = useAuth();
-    const { groups, loading, error, createGroup } = useGroups(user?.id ?? null);
+    const { groups,publicGroups, loading, error,  createGroup } = useGroups(user?.id ?? null);
     const isAdmin = true;
     const [showCreate, setShowCreate] = useState(false);
     const [filter, setFilter] = useState<'all' | 'mine'>('mine');
     const myGroups = groups.filter(g =>
         g.members.some((m: { id: string }) => m.id === user?.id)
     );
-    const allPublicGroups = groups.filter(g => g.isPublic);
+    const visibleGroups = filter === 'mine' ? myGroups : publicGroups;
 
-    const visibleGroups = filter === 'mine' ? myGroups : allPublicGroups;
-
-    const handleCreate = async (name: string, desc: string, code: string) => {
+    const handleCreate = async (name: string, desc: string, code: string, isPublic:boolean) => {
         console.log('HandleCreate called');
         console.log('User: ',user?.id);
-        await createGroup(name, desc, code);
+        await createGroup(name, desc, code, isPublic);
         console.log('createGroup, groups: ',groups);
         Alert.alert('Sukces', `Grupa "${name}" została utworzona.`);
     };
@@ -448,4 +489,44 @@ const styles = StyleSheet.create({
         backgroundColor: C.accent, alignItems: 'center',
     },
     btnPrimaryText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+    modalScrollContent: {
+        flexGrow: 1,
+        justifyContent: 'flex-end',
+    },
+    visibilityRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 16,
+    },
+    visibilityOption: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: C.border,
+        borderRadius: 12,
+        padding: 12,
+        alignItems: 'center',
+        backgroundColor: C.surface2,
+        gap: 3,
+    },
+    visibilityOptionActive: {
+        borderColor: C.accent,
+        backgroundColor: C.accentLight,
+    },
+    visibilityIcon: {
+        fontSize: 22,
+        marginBottom: 2,
+    },
+    visibilityLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: C.textMuted,
+    },
+    visibilityLabelActive: {
+        color: C.accent,
+    },
+    visibilityDesc: {
+        fontSize: 10,
+        color: C.textDim,
+        textAlign: 'center',
+    },
 });

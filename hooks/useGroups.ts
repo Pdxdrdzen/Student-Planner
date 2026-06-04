@@ -1,11 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { Group, GroupEvent, GroupMember, EventType } from '../screens/groupTypes';
+import { Group, EventType } from '../screens/groupTypes';
 
 export function useGroups(userId: string | null) {
     const [groups, setGroups] = useState<Group[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [publicGroups,setPublicGroups] = useState<Group[]>([]);
+
+    const logActivity = async (
+        groupId: string,
+        type: string,
+        actorName: string,
+        actorInitials: string,
+        payload: object = {}
+    ) => {
+        await supabase.from('group_activity').insert({
+            group_id: groupId,
+            actor_name: actorName,
+            actor_initials: actorInitials,
+            type,
+            payload,
+        });
+    };
 
     const fetchGroups = useCallback(async () => {
         if (!userId) { setGroups([]); setLoading(false); return; }
@@ -41,7 +58,7 @@ export function useGroups(userId: string | null) {
                         isPublic: g.is_public??false,
                         createdAt: g.created_at,
                         members: (members ?? []).map(m => ({
-                            id: m.id,
+                            id: m.user_id??m.id,
                             userId: m.user_id ?? null,
                             name: m.name,
                             email: m.email,
@@ -61,6 +78,25 @@ export function useGroups(userId: string | null) {
                 })
             );
             setGroups(full);
+            const { data: pubRows } = await supabase
+                .from('groups')
+                .select('id, name, faculty_code, color, is_public, admin_id, starosta_id, created_at, description')
+                .eq('is_public', true);
+
+            const pubFull: Group[] = (pubRows ?? []).map(g => ({
+                id: g.id,
+                name: g.name,
+                description: g.description ?? '',
+                facultyCode: g.faculty_code,
+                adminId: g.admin_id,
+                starostaId: g.starosta_id ?? null,
+                color: g.color ?? '#6C63FF',
+                isPublic: true,
+                createdAt: g.created_at,
+                members: [],
+                events: [],
+            }));
+            setPublicGroups(pubFull);
         } catch (e: any) {
             setError(e.message);
         } finally {
@@ -70,7 +106,7 @@ export function useGroups(userId: string | null) {
 
     useEffect(() => { fetchGroups(); }, [fetchGroups]);
 
-    const createGroup = async (name: string, desc: string, code: string) => {
+    const createGroup = async (name: string, desc: string, code: string, isPublic:boolean) => {
         if (!userId){
             console.log('CREATE GROUP: no userId')
             return;
@@ -80,7 +116,7 @@ export function useGroups(userId: string | null) {
         const color = colors[groups.length % colors.length];
         const { data: g, error: e } = await supabase
             .from('groups')
-            .insert({ name, description: desc, faculty_code: code, admin_id: userId, color , created_by: userId})
+            .insert({ name, description: desc, faculty_code: code, admin_id: userId, color , created_by: userId, is_public: isPublic,})
             .select().single();
         console.log('CREATE GROUP RESULT: ',{g,error: e});
         if (e || !g) { setError(e?.message ?? 'Błąd'); return; }
@@ -98,13 +134,31 @@ export function useGroups(userId: string | null) {
             type, due_date: dueDate.toISOString(), created_by: userId,
         });
         if (e) setError(e.message);
-        else await fetchGroups();
+        const actor = groups.find(g => g.id === groupId)
+            ?.members.find(m => m.id === userId);
+        await logActivity(groupId, 'event_created',
+            actor?.name ?? 'Ktoś',
+            actor?.avatarInitials ?? '?',
+            { eventTitle: title, eventType: type }
+        );
+
+        await fetchGroups();
     };
 
     const deleteEvent = async (eventId: string) => {
+        const event = groups.flatMap(g => g.events).find(e => e.id === eventId);
+        const group = groups.find(g => g.events.some(e => e.id === eventId));
+        const actor = group?.members.find(m => m.id === userId);
         const { error: e } = await supabase.from('group_events').delete().eq('id', eventId);
         if (e) setError(e.message);
-        else await fetchGroups();
+        if (group) {
+            await logActivity(group.id, 'event_deleted',
+                actor?.name ?? 'Ktoś',
+                actor?.avatarInitials ?? '?',
+                { eventTitle: event?.title ?? '' }
+            );
+        }
+        await fetchGroups();
     };
 
     const addMember = async (groupId: string, name: string, email: string) => {
@@ -115,11 +169,19 @@ export function useGroups(userId: string | null) {
             role: 'student', name, email, avatar_initials: initials,
         });
         if (e) setError(e.message);
-        else await fetchGroups();
+        await logActivity(groupId, 'member_joined', name, initials);
+        await fetchGroups();
     };
 
     const removeMember = async (groupId: string, memberId: string) => {
+        const member = groups
+            .find(g => g.id === groupId)
+            ?.members.find(m => m.id === memberId);
+        if (member) await logActivity(groupId, 'member_left', member.name, member.avatarInitials);
         await supabase.from('group_members').delete().eq('group_id', groupId).eq('user_id', memberId);
+        if (member) {
+            await logActivity(groupId, 'member_left', member.name, member.avatarInitials);
+        }
         await fetchGroups();
     };
 
@@ -130,7 +192,7 @@ export function useGroups(userId: string | null) {
         await fetchGroups();
     };
 
-    return { groups, loading, error, refetch: fetchGroups,
+    return { groups,publicGroups, loading, error, refetch: fetchGroups,
         createGroup, addEvent, deleteEvent,
         addMember, removeMember, promoteToStarosta };
 }

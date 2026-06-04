@@ -10,7 +10,7 @@ import LoginScreen from './screens/auth_screens/LoginScreen';
 import RegisterScreen from './screens/auth_screens/RegisterScreen';
 import ForgotPasswordScreen from './screens/auth_screens/ForgotPasswordScreen';
 import HomeScreen from './screens/HomeScreen';
-import SearchScreen from './screens/SearchScreen';
+import ActivityScreen from './screens/ActivityScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import GroupDashboardScreen from './screens/GroupDashboardScreen';
 import ChatScreen from './screens/ChatScreen';
@@ -19,7 +19,7 @@ import GroupViewScreen from "./screens/GroupViewScreen";
 import { useAuth } from './contexts/AuthContext';
 import {AuthProvider} from "./contexts/AuthContext";
 import EmailConfirmedScreen from "./screens/auth_screens/EmailConfirmedScreen";
-import {Home,Users, Search, User} from 'lucide-react-native';
+import {Home,Users, Search, User, Bell} from 'lucide-react-native';
 
 export type RootStackParamList = {
     MainTabs: undefined;
@@ -37,7 +37,7 @@ export type RootStackParamList = {
 
 export type BottomTabParamList = {
     'Strona główna': undefined;
-    Search: undefined;
+    Aktywność: undefined;
     Profile: undefined;
     GroupView:undefined;
 };
@@ -87,12 +87,12 @@ const MainTabs = () => {
                     tabBarIcon: ({ color, size }) => <Users color={color} size={size} strokeWidth={1.8} />,                }}
             />
             <Tab.Screen
-                name="Search"
-                component={SearchScreen}
+                name="Aktywność"
+                component={ActivityScreen}
                 options={{
                     headerShown: false,
                     title: 'Szukaj',
-                    tabBarIcon: ({ color, size }) => <Search color={color} size={size} strokeWidth={1.8} />,                }}
+                    tabBarIcon: ({ color, size }) => <Bell color={color} size={size} strokeWidth={1.8} />,                }}
             />
             <Tab.Screen
                 name="Profile"
