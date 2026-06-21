@@ -91,7 +91,7 @@ const MainTabs = () => {
                 component={ActivityScreen}
                 options={{
                     headerShown: false,
-                    title: 'Szukaj',
+                    title: 'Aktywność',
                     tabBarIcon: ({ color, size }) => <Bell color={color} size={size} strokeWidth={1.8} />,                }}
             />
             <Tab.Screen

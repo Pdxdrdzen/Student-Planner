@@ -22,7 +22,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import AnimatedBackground from '../components/AnimatedBackground';
 import {useAuth} from '../contexts/AuthContext'
-import { Users, Search, User, ChevronRight, GraduationCap } from 'lucide-react-native';
+import {Users, Search, User, ChevronRight, GraduationCap, Bell} from 'lucide-react-native';
 import { LucideIcon } from 'lucide-react-native';
 
 type Props = {
@@ -42,7 +42,7 @@ type QuickLink = {
 
 const QUICK_LINKS: QuickLink[] = [
     { icon: Users,  label: 'Grupy',   description: 'Dołącz lub zarządzaj grupami', tab: 'GroupDashboard', accent: '#6C63FF' },
-    { icon: Search, label: 'Szukaj',  description: 'Znajdź grupy i treści',        tab: 'Search',         accent: '#3ECFCF' },
+    { icon: Bell, label: 'Aktywnosc',  description: 'Sprawdz aktywnosc grup',        tab: 'Activity',         accent: '#3ECFCF' },
     { icon: User,   label: 'Profil',  description: 'Twoje konto i ustawienia',     tab: 'Profile',        accent: '#FF6B9D' },
 ];
 

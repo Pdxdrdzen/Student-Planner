@@ -186,9 +186,33 @@ export function useGroups(userId: string | null) {
     };
 
     const promoteToStarosta = async (groupId: string, memberId: string) => {
-        await supabase.from('group_members').update({ role: 'student' }).eq('group_id', groupId).eq('role', 'starosta');
-        await supabase.from('group_members').update({ role: 'starosta' }).eq('group_id', groupId).eq('user_id', memberId);
-        await supabase.from('groups').update({ starosta_id: memberId }).eq('id', groupId);
+        await supabase
+            .from('group_members')
+            .update({ role: 'student' })
+            .eq('group_id', groupId)
+            .eq('role', 'starosta');
+        const member = groups
+            .find(g => g.id === groupId)
+            ?.members.find(m => m.id === memberId);
+
+        if (!member) return;
+        const { error } = member.userId
+            ? await supabase
+                .from('group_members')
+                .update({ role: 'starosta' })
+                .eq('group_id', groupId)
+                .eq('user_id', member.userId)
+            : await supabase
+                .from('group_members')
+                .update({ role: 'starosta' })
+                .eq('group_id', groupId)
+                .eq('id', memberId);
+        if (error) { setError(error.message); return; }
+
+        await supabase
+            .from('groups')
+            .update({ starosta_id: member.userId ?? memberId })
+            .eq('id', groupId);
         await fetchGroups();
     };
 

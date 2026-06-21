@@ -534,7 +534,7 @@ export default function GroupDetailScreen({ route }: any) {
             { text: 'Anuluj', style: 'cancel' },
             {
                 text: 'Mianuj', onPress: () => {
-                    promoteToStarosta(groupId, memberId)
+                    promoteToStarosta(groupId,memberId)
                 }
             },
         ]);
@@ -700,8 +700,8 @@ export default function GroupDetailScreen({ route }: any) {
                                 canManage={iCanManageMembers}
                                 isCurrentUser={member.userId === user?.id}
                                 isStarostaSlotTaken={hasStarosta}
-                                onPromoteToStarosta={() => handlePromoteToStarosta(member.id)}
-                                onRemove={() => handleRemoveMember(member.id)}
+                                onPromoteToStarosta={() => handlePromoteToStarosta(member.userId??member.id)}
+                                onRemove={() => handleRemoveMember(member.userId??member.id)}
                             />
                         )}
                     />
